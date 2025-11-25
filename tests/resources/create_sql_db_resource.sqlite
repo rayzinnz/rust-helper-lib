@@ -1,0 +1,6 @@
+--sqlite3 test.db
+
+CREATE TABLE t (c);
+INSERT INTO t(c) VALUES (1);
+INSERT INTO t(c) VALUES (2);
+INSERT INTO t(c) VALUES (NULL);

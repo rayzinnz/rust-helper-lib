@@ -1,0 +1,17 @@
+[package]
+name = "helper_lib"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.42"
+log = "0.4.28"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+simplelog = "0.12.2"
+time = "0.3.44"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+termios = "0.3.3"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+crossterm = "0.29.0"
