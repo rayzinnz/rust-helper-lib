@@ -1,4 +1,6 @@
-﻿use super::*;
+﻿use chrono::{TimeZone, Timelike};
+
+use super::*;
 use std::fmt::{Display, Formatter, Result};
 use std::path::PathBuf;
 
@@ -71,6 +73,19 @@ fn test_bare_i32() {
 fn test_bare_custom_type_display() {
     let input: CustomType = CustomType { id: 123 };
     assert_eq!(dbfmt_t(&input), "CustomID(123)");
+}
+
+#[test]
+fn test_bare_datetime_utc() {
+    let input: DateTime<Utc> = Utc.with_ymd_and_hms(2023, 12, 25, 14, 30, 45).unwrap();
+    assert_eq!(dbfmt_t(&input), "datetime('2023-12-25 14:30:45')");
+}
+
+#[test]
+fn test_bare_datetime_local() {
+    let input: DateTime<Local> = Local.with_ymd_and_hms(2023, 12, 25, 14, 30, 45).unwrap();
+    //local times will be converted to utc in the database using the 'utc' modifier!
+    assert_eq!(dbfmt_t(&input), "datetime('2023-12-25 14:30:45', 'utc')");
 }
 
 // MACRO tests
@@ -176,6 +191,32 @@ fn test_query_single_row_to_tuple() {
     let sql = "SELECT 1 AS c1, 2 AS c2 FROM t LIMIT 1;";
     let result = query_single_row_to_tuple::<(i64,u8)>(&dbfilepath, sql).unwrap();
     let expected: Option<(i64,u8)> = Some((1, 2));
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_single_row_to_tuple_datetime_utc() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT datetime('now', 'utc');";
+    let result = query_single_row_to_tuple::<(DateTime<Utc>,)>(&dbfilepath, sql).unwrap();
+    let now: DateTime<Utc> = Utc::now();
+    let now = now.with_nanosecond(0).unwrap();
+    let expected: Option<(DateTime<Utc>,)> = Some((now,));
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_single_row_to_tuple_datetime_local() {
+    // note; conversion to chrono::DateTime<Local> always
+    //       assumes SELECTed date is in utc, so it will convert to local by adding offset.
+    //       If SELECTed date is in localtime (e.g. SELECT datetime('now', 'localtime')) then the resulting date will be wrong (will add another offset to the localtime from sqlite).
+
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT datetime('now', 'utc');";
+    let result = query_single_row_to_tuple::<(DateTime<Local>,)>(&dbfilepath, sql).unwrap();
+    let now: DateTime<Local> = Local::now();
+    let now = now.with_nanosecond(0).unwrap();
+    let expected: Option<(DateTime<Local>,)> = Some((now,));
     assert_eq!(result, expected);
 }
 
