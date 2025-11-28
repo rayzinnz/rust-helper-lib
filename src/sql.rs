@@ -85,9 +85,9 @@ where
     }
 
     if let Some(s) = any_value.downcast_ref::<DateTime<Local>>() {
-        //convert local to utc? No this should be done in calling code, always just store the date sent
-        //return format!("{}datetime('{}', 'utc')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
-        return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
+        //convert local to utc. descision made to always store dates in utc, and use conversion functions for selecting and displaying to local time.
+        return format!("{}datetime('{}', 'utc')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
+        //return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
 
     // --- All other Display types (i32, f64, structs, etc.) ---

@@ -1,4 +1,4 @@
-﻿use chrono::Timelike;
+﻿use chrono::{TimeZone, Timelike};
 
 use super::*;
 use std::fmt::{Display, Formatter, Result};
@@ -73,6 +73,19 @@ fn test_bare_i32() {
 fn test_bare_custom_type_display() {
     let input: CustomType = CustomType { id: 123 };
     assert_eq!(dbfmt_t(&input), "CustomID(123)");
+}
+
+#[test]
+fn test_bare_datetime_utc() {
+    let input: DateTime<Utc> = Utc.with_ymd_and_hms(2023, 12, 25, 14, 30, 45).unwrap();
+    assert_eq!(dbfmt_t(&input), "datetime('2023-12-25 14:30:45')");
+}
+
+#[test]
+fn test_bare_datetime_local() {
+    let input: DateTime<Local> = Local.with_ymd_and_hms(2023, 12, 25, 14, 30, 45).unwrap();
+    //local times will be converted to utc in the database using the 'utc' modifier!
+    assert_eq!(dbfmt_t(&input), "datetime('2023-12-25 14:30:45', 'utc')");
 }
 
 // MACRO tests
