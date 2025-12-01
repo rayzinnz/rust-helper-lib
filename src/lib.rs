@@ -73,7 +73,7 @@ pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
 
         //poll Q
         let mut key_seq:Vec<u8> = Vec::new();
-        loop {
+        while keep_going.load(Ordering::Relaxed) {
             match rx.try_recv() {
                 // Case 1: A byte was successfully received.
                 Ok(byte) => {
@@ -98,6 +98,7 @@ pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
                 // Case 3: The sender (producer thread) has hung up or panicked.
                 Err(mpsc::TryRecvError::Disconnected) => {
                     println!("get_key_sequence(): Sender disconnected");
+                    tcsetattr(stdin, TCSANOW, & termios).unwrap();  // reset the stdin to original termios data
                     break;
                 }
             }
