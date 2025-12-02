@@ -40,7 +40,7 @@ pub fn setup_logger(level_filter: LevelFilter) {
 pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
     #[cfg(target_os = "windows")]
     {
-        loop {
+        while keep_going.load(Ordering::Relaxed) {
             // event::read() is blocking and waits for the next event
             match event::read() {
                 Ok(Event::Key(key_event)) => {
