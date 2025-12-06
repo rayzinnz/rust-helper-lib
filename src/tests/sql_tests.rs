@@ -251,3 +251,48 @@ fn test_query_to_tuples_nullable() {
     expected.push((None,0));
     assert_eq!(result, expected);
 }
+
+#[test]
+fn test_query_to_string() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT 'string' FROM t LIMIT 1;";
+    let result = query_to_string(&dbfilepath, sql).unwrap();
+    let expected: Option<String> = Some(String::from("string"));
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_to_string_null() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT NULL FROM t LIMIT 1;";
+    let result = query_to_string(&dbfilepath, sql).unwrap();
+    let expected: Option<String> = None;
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_to_string_int() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT 67 FROM t LIMIT 1;";
+    let result = query_to_string(&dbfilepath, sql).unwrap();
+    let expected: Option<String> = Some(String::from("67"));
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_to_string_real() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT 3.14159 FROM t LIMIT 1;";
+    let result = query_to_string(&dbfilepath, sql).unwrap();
+    let expected: Option<String> = Some(String::from("3.14159"));
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_query_to_string_blob() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT x'ff00e767' FROM t LIMIT 1;";
+    let result = query_to_string(&dbfilepath, sql).unwrap();
+    let expected: Option<String> = Some(String::from("ff00e767"));
+    assert_eq!(result, expected);
+}
