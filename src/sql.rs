@@ -193,6 +193,42 @@ pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>, Box<dyn S
     return Ok(result);
 }
 
+/// returns the first column of the first row to String, or None if NULL. Error on no rows or failed cast
+pub fn query_to_string(dbfilepath:&Path, sql:&str) -> Result<Option<String>, Box<dyn StdError>> {
+    let conn = Connection::open(&dbfilepath)?;
+    
+    // 2. Execute the query using query_row
+    let result = conn.query_row(
+        sql,
+        [], // No parameters for this example, use `params!` or `&[]` for bind parameters
+        |row| {
+            // This closure maps a single row to the desired output.
+            // We use get_raw(0) to check for NULL before attempting to convert to String.
+            match row.get_ref(0)? {
+                ValueRef::Null => Ok(None),
+                // For INTEGER and REAL, use format! to convert to String without relying 
+                // on the strict FromSql<String> implementation.
+                ValueRef::Integer(i) => Ok(Some(format!("{}", i))),
+                ValueRef::Real(f) => Ok(Some(format!("{}", f))),
+                // BLOB: Convert byte slice to a hexadecimal String.
+                ValueRef::Blob(bytes) => {
+                    // Use the hex crate to encode the bytes into a lowercase hex string
+                    Ok(Some(hex::encode(bytes)))
+                },
+                // If it's Text, safely convert the byte slice to a String.
+                ValueRef::Text(bytes) => {
+                    // let formatted_string: String = row.get(0)?;
+                    let formatted_string: String = String::from_utf8_lossy(bytes).to_string();
+                    Ok(Some(formatted_string))
+                }
+            }
+        },
+    )?;
+
+    // 3. Handle the result from query_row
+    Ok(result)
+}
+
 pub fn query_single_row_to_tuple<T>(dbfilepath:&Path, sql:&str) -> Result<Option<T>, rusqlite::Error> 
 where
     // The trait bound remains correct!

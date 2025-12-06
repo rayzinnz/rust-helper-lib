@@ -57,12 +57,15 @@ pub fn add_extension(path:&Path, extension:&str) -> PathBuf {
 mod tests {
     use super::*;
 
-    #[test]
+    #[cfg(target_os = "windows")]
+	#[test]
     fn test_path_to_agnostic_relative_windows() {
         let base: &Path = Path::new(r"C:\Users\hrag");
         let path: &Path = Path::new(r"C:\Users\hrag\five\eight\six.txt");
         assert_eq!(path_to_agnostic_relative(path.parent().unwrap(), base), "five/eight");
     }
+	
+	#[cfg(target_os = "linux")]
     #[test]
     fn test_path_to_agnostic_relative_linux() {
         let base: &Path = Path::new("/home/ray");
