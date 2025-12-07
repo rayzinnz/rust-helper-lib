@@ -18,6 +18,7 @@ use std::{
 #[cfg(target_os = "linux")]
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
+pub mod clipboard;
 pub mod datetime;
 pub mod paths;
 pub mod sql;
