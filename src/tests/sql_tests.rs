@@ -296,3 +296,11 @@ fn test_query_to_string_blob() {
     let expected: Option<String> = Some(String::from("ff00e767"));
     assert_eq!(result, expected);
 }
+
+#[test]
+fn test_query_to_string_inmemory() {
+    let sql = "SELECT 'string';";
+    let result = query_to_string(Path::new(""), sql).unwrap();
+    let expected: Option<String> = Some(String::from("string"));
+    assert_eq!(result, expected);
+}

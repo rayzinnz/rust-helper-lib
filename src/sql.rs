@@ -154,7 +154,12 @@ where
 
 /// returns the first column of the first row to i64, or none if no rows. Error on NULL or failed cast
 pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>, Box<dyn StdError>> {
-    let conn = Connection::open(&dbfilepath)?;
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
     
     let result: Option<i64> = conn.query_row(sql, [], |row| {
         let value_ref = row.get_ref(0)?;
@@ -195,7 +200,12 @@ pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>, Box<dyn S
 
 /// returns the first column of the first row to String, or None if NULL. Error on no rows or failed cast
 pub fn query_to_string(dbfilepath:&Path, sql:&str) -> Result<Option<String>, Box<dyn StdError>> {
-    let conn = Connection::open(&dbfilepath)?;
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
     
     // 2. Execute the query using query_row
     let result = conn.query_row(
@@ -237,7 +247,12 @@ where
         Error = Error 
     >
 {
-    let conn = Connection::open(&dbfilepath)?;
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
     
     // 1. Use query_map instead of query_row
     let mut stmt = conn.prepare(sql)?;
@@ -282,7 +297,12 @@ where
         Error = Error 
     >
 {
-    let conn = Connection::open(&dbfilepath)?;
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
     
     // 1. Prepare the SQL statement.
     let mut stmt = conn.prepare(sql)?;
