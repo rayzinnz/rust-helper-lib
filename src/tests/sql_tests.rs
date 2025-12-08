@@ -241,6 +241,18 @@ fn test_query_to_tuples() {
 }
 
 #[test]
+fn test_query_to_tuples_conn() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let conn = Connection::open(&dbfilepath).unwrap();
+    let sql = "SELECT c, 0 AS c2 FROM t LIMIT 2;";
+    let result = query_to_tuples_conn::<(i64,u8)>(conn, sql).unwrap();
+    let mut expected: Vec<(i64,u8)> = Vec::new();
+    expected.push((1,0));
+    expected.push((2,0));
+    assert_eq!(result, expected);
+}
+
+#[test]
 fn test_query_to_tuples_nullable() {
     let dbfilepath = PathBuf::from("./tests/resources/test.db");
     let sql = "SELECT c, 0 AS c2 FROM t LIMIT 3;";

@@ -288,7 +288,6 @@ where
     }
 }
 
-
 pub fn query_to_tuples<T>(dbfilepath:&Path, sql:&str) -> Result<Vec<T>, rusqlite::Error> 
 where
     // T must implement TryFrom<&Row> for *any* lifetime 'r (HRTB remains crucial)
@@ -304,6 +303,34 @@ where
         conn = Connection::open(&dbfilepath)?;
     }
     
+    // 1. Prepare the SQL statement.
+    let mut stmt = conn.prepare(sql)?;
+    
+    // 2. Use query_map to iterate and apply the conversion closure to every row.
+    let rows_result = stmt.query_map([], |row| {
+        // The closure uses your TryFrom constraint
+        T::try_from(row)
+    })?; // The first '?' handles errors during statement execution (e.g., bad SQL)
+
+    // 3. Collect the MappedRows iterator.
+    // The inner iterator yields Result<T, Error>. 
+    // .collect() collects these into a Result<Vec<T>, Error>.
+    let result_vec: Result<Vec<T>, Error> = rows_result
+        .collect();
+    
+    // 4. Return the result. The '?' operator is often implicitly done 
+    // if using the fully expressive method chaining, but here we return the Result<Vec<T>, Error>.
+    result_vec
+}
+
+pub fn query_to_tuples_conn<T>(conn:Connection, sql:&str) -> Result<Vec<T>, rusqlite::Error> 
+where
+    // T must implement TryFrom<&Row> for *any* lifetime 'r (HRTB remains crucial)
+    for<'r> T: TryFrom<
+        &'r Row<'r>, 
+        Error = Error 
+    >
+{
     // 1. Prepare the SQL statement.
     let mut stmt = conn.prepare(sql)?;
     
