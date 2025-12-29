@@ -1,4 +1,5 @@
 ﻿use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
+use std::time::{SystemTime};
 
 /// assumes naivedatetime is in UTC timezone
 pub fn naivedatetime_to_utc(naive_datetime: NaiveDateTime) -> DateTime<Utc> {
@@ -36,7 +37,23 @@ pub fn naivedate_to_local(naive_date: NaiveDate) -> DateTime<Local> {
 	local_dt
 }
 
+pub fn systemtime_to_unixtimestamp(systemtime: SystemTime) -> u64 {
+	// unix timestamp in seconds
+	// errors defaults to 0
+	match systemtime.duration_since(SystemTime::UNIX_EPOCH) {
+		Ok(duration) => duration.as_secs(),
+		Err(_) => 0
+	}
+}
 
+pub fn unixtimestamp_to_systemtime(unixtimestamp: u64) -> SystemTime {
+	// unix timestamp in seconds
+	// None defaults to UNIX_EPOCH
+	match SystemTime::UNIX_EPOCH.checked_add(std::time::Duration::new(unixtimestamp, 0)) {
+		Some(systemtime) => systemtime,
+		None => SystemTime::UNIX_EPOCH
+	}
+}
 
 #[cfg(test)]
 mod tests {
