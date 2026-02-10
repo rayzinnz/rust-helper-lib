@@ -21,6 +21,7 @@ use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 pub mod clipboard;
 pub mod datetime;
 pub mod paths;
+pub mod regex;
 pub mod sql;
 pub mod strings;
 
