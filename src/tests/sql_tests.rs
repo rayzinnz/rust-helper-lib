@@ -2,6 +2,7 @@
 
 use super::*;
 use std::fmt::{Display, Formatter, Result};
+use std::fs;
 use std::path::PathBuf;
 
 // A simple test struct to confirm non-string display formatting
@@ -315,4 +316,31 @@ fn test_query_to_string_inmemory() {
     let result = query_to_string(Path::new(""), sql).unwrap();
     let expected: Option<String> = Some(String::from("string"));
     assert_eq!(result, expected);
+}
+
+#[test]
+fn test_execute_batch() {
+    let sql = "CREATE TABLE t(c); INSERT INTO t VALUES (2); DELETE FROM t;";
+    let result = execute_batch(Path::new(""), sql).unwrap();
+    assert_eq!(result, ());
+}
+
+#[test]
+fn test_execute_return_last_rowid() {
+    let sql = "CREATE TABLE t(c); INSERT INTO t VALUES (2);INSERT INTO t VALUES (66);";
+    let result = execute_return_last_rowid(Path::new(""), sql).unwrap();
+    assert_eq!(result, 2);
+}
+
+#[test]
+fn test_execute_return_changed_rows() {
+    let dbfilepath = std::env::temp_dir().join("helper_lib_test_temp_db.db");
+    let sql = "CREATE TABLE t(c); INSERT INTO t VALUES (2); INSERT INTO t VALUES (66);";
+    execute_batch(&dbfilepath, sql).unwrap();
+    let result = execute_return_changed_rows(&dbfilepath, "UPDATE t SET c = 0").unwrap();
+    //clean up temp db file
+    if dbfilepath.exists() {
+        fs::remove_file(dbfilepath).unwrap();
+    }
+    assert_eq!(result, 2);
 }

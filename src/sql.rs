@@ -351,6 +351,48 @@ where
     result_vec
 }
 
+///execute sql to dbfilepath, void return. Can execute multiple statements within `sql` separated by ";"
+pub fn execute_batch(dbfilepath:&Path, sql:&str) -> Result<(), rusqlite::Error> 
+{
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
+    
+    conn.execute_batch(sql)
+}
+
+///execute sql to dbfilepath, return number of rows changed. Single statement only.
+pub fn execute_return_changed_rows(dbfilepath:&Path, sql:&str) -> Result<usize, rusqlite::Error> 
+{
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
+    
+    conn.execute(sql, [])
+}
+
+///execute sql to dbfilepath, return last rowid. Can execute multiple statements within `sql` separated by ";"
+pub fn execute_return_last_rowid(dbfilepath:&Path, sql:&str) -> Result<i64, rusqlite::Error> 
+{
+    let conn: Connection;
+    if dbfilepath == Path::new("") {
+        conn = Connection::open_in_memory()?;
+    } else {
+        conn = Connection::open(&dbfilepath)?;
+    }
+    
+    conn.execute_batch(sql)?;
+    
+    Ok(conn.last_insert_rowid())
+}
+
+
 #[cfg(test)]
 #[path = "./tests/sql_tests.rs"]
 mod tests;
