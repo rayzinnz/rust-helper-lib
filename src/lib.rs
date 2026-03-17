@@ -20,6 +20,7 @@ use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
 pub mod clipboard;
 pub mod datetime;
+pub mod llm;
 pub mod net;
 pub mod paths;
 pub mod regex;
