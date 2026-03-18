@@ -49,7 +49,7 @@ pub async fn get_image_description_from_file(url_base:&str, cf_access_client_id:
 				"png" => "image/png",
 				_ => "",
 			};
-			return Ok(get_image_description_from_bytes(url_base, cf_access_client_id, cf_access_client_secret, mime_type, bytes).await?);
+			return Ok(get_image_description_from_bytes(url_base, cf_access_client_id, cf_access_client_secret, mime_type, &bytes).await?);
 		}
 		Err(e) => {
 			return Err(format!("Error reading file: {}\n{}", path.to_string_lossy(), e).into());
@@ -57,7 +57,7 @@ pub async fn get_image_description_from_file(url_base:&str, cf_access_client_id:
 	}
 }
 
-pub async fn get_image_description_from_bytes(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, mime_type:&str, bytes:Vec<u8>) -> Result<String, Box<dyn Error>> {
+pub async fn get_image_description_from_bytes(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, mime_type:&str, bytes:&[u8]) -> Result<String, Box<dyn Error>> {
 	let base64encoded = BASE64_STANDARD.encode(bytes);
 	let payload = json!({
 		"messages": [
