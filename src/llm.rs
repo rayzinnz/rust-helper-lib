@@ -128,7 +128,7 @@ pub async fn get_token_count(url_base:&str, cf_access_client_id:&str, cf_access_
 	return Err("No embeddings returned.".into());
 }
 
-pub async fn get_embeddings(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, text:&str) -> Result<Vec<f64>, Box<dyn Error>> {
+async fn get_embeddings_internal(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, text:&str) -> Result<String, Box<dyn Error>> {
 	let payload = json!({
 		"LLAMA_UBATCH_SIZE": 2048,
 		"content": text,
@@ -164,10 +164,10 @@ pub async fn get_embeddings(url_base:&str, cf_access_client_id:&str, cf_access_c
 			let mut embeddings = body.split_once("\"embedding\":").expect("error splitting json at embeddings").1.to_string();
 			embeddings.retain(|c| c.is_ascii_digit() || c==',' || c=='.' || c=='-' || c=='e');
         	// println!("embeddings: {:?}", embeddings);
-			let embeddings: Vec<f64> = embeddings
-				.split(',')
-				.map(|x| x.parse::<f64>().expect(&format!("error parsing: {}", x)))
-				.collect();
+			// let embeddings: Vec<f64> = embeddings
+			// 	.split(',')
+			// 	.map(|x| x.parse::<f64>().expect(&format!("error parsing: {}", x)))
+			// 	.collect();
         	// println!("embeddings: {:?}", embeddings);
         	// println!("embeddings len: {}", embeddings.len());
 			return Ok(embeddings)
@@ -179,4 +179,24 @@ pub async fn get_embeddings(url_base:&str, cf_access_client_id:&str, cf_access_c
     }
 
 	return Err("No embeddings returned.".into());
+}
+
+pub async fn get_embeddings(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, text:&str) -> Result<Vec<f64>, Box<dyn Error>> {
+	let embeddings = get_embeddings_internal(url_base, cf_access_client_id, cf_access_client_secret, text).await?;
+	let embeddings: Vec<f64> = embeddings
+		.split(',')
+		.map(|x| x.parse::<f64>().expect(&format!("error parsing: {}", x)))
+		.collect();
+	
+	Ok(embeddings)
+}
+
+pub async fn get_embeddings_f32(url_base:&str, cf_access_client_id:&str, cf_access_client_secret:&str, text:&str) -> Result<Vec<f32>, Box<dyn Error>> {
+	let embeddings = get_embeddings_internal(url_base, cf_access_client_id, cf_access_client_secret, text).await?;
+	let embeddings: Vec<f32> = embeddings
+		.split(',')
+		.map(|x| x.parse::<f32>().expect(&format!("error parsing: {}", x)))
+		.collect();
+	
+	Ok(embeddings)
 }
