@@ -1,6 +1,6 @@
 ﻿use chrono::{DateTime, Local, Utc};
 use rusqlite::{Connection, Error, OptionalExtension, Row};
-use rusqlite::types::{ValueRef};
+use rusqlite::types::{FromSql, ValueRef};
 use std::{
     any::Any,
     convert::TryFrom,
@@ -321,6 +321,19 @@ where
     // 4. Return the result. The '?' operator is often implicitly done 
     // if using the fully expressive method chaining, but here we return the Result<Vec<T>, Error>.
     result_vec
+}
+
+pub fn query_to_coltype<T>(dbfilepath:&Path, sql:&str) -> Result<Vec<T>, rusqlite::Error>
+where
+    T: Clone + std::fmt::Debug + FromSql,
+{
+    let v = query_to_tuples::<(T,)>(dbfilepath, sql)?;
+    
+    let v2: Vec<T> = v.into_iter()
+        .map(|(x,)| x)
+        .collect();
+
+    Ok(v2)
 }
 
 pub fn query_to_tuples_conn<T>(conn:Connection, sql:&str) -> Result<Vec<T>, rusqlite::Error> 

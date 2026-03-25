@@ -242,6 +242,17 @@ fn test_query_to_tuples() {
 }
 
 #[test]
+fn test_query_to_coltype_int() {
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT c AS c2 FROM t LIMIT 2;";
+    let result = query_to_coltype::<i64>(&dbfilepath, sql).unwrap();
+    let mut expected: Vec<i64> = Vec::new();
+    expected.push(1);
+    expected.push(2);
+    assert_eq!(result, expected);
+}
+
+#[test]
 fn test_query_to_tuples_conn() {
     let dbfilepath = PathBuf::from("./tests/resources/test.db");
     let conn = Connection::open(&dbfilepath).unwrap();
