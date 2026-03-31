@@ -1,5 +1,5 @@
 ﻿use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
-use std::time::{SystemTime};
+use std::{time::SystemTime};
 
 /// assumes naivedatetime is in UTC timezone
 pub fn naivedatetime_to_utc(naive_datetime: NaiveDateTime) -> DateTime<Utc> {
@@ -37,6 +37,10 @@ pub fn naivedate_to_local(naive_date: NaiveDate) -> DateTime<Local> {
 	local_dt
 }
 
+pub fn systemtime_to_utc(systemtime: SystemTime) -> DateTime<Utc> {
+	systemtime.into()
+}
+
 pub fn systemtime_to_unixtimestamp(systemtime: SystemTime) -> u64 {
 	// unix timestamp in seconds
 	// errors defaults to 0
@@ -53,6 +57,22 @@ pub fn unixtimestamp_to_systemtime(unixtimestamp: u64) -> SystemTime {
 		Some(systemtime) => systemtime,
 		None => SystemTime::UNIX_EPOCH
 	}
+}
+
+pub fn windows_filetime_to_utc(windows_filetime:u64) -> DateTime<Utc> {
+	//windows filetime = 100-nanosecond intervals since January 1, 1601 UTC
+	let us_since_1601 = windows_filetime / 10; // Convert 100-nanosecond intervals to microseconds
+	let td = chrono::Duration::microseconds(us_since_1601 as i64); // Convert to Duration and add to 1601-01-01 00:00:00 UTC
+	let utc_date = Utc.with_ymd_and_hms(1601,1,1,0,0,0).unwrap();
+	let utc_date = utc_date.checked_add_signed(td).unwrap();
+	utc_date
+}
+
+pub fn windows_filetime_unixtimestamp(windows_filetime:u64) -> i64 {
+	//windows filetime = 100-nanosecond intervals since January 1, 1601 UTC
+	let seconds_since_1601 = windows_filetime / 10_000_000; // Convert 100-nanosecond intervals to seconds
+	let seconds_since_unix_epoch = seconds_since_1601 - 11_644_473_600; // Convert from 1601 to Unix epoch (11644473600 seconds)
+	seconds_since_unix_epoch as i64
 }
 
 #[cfg(test)]
@@ -129,4 +149,23 @@ mod tests {
 		assert_eq!(result, expected);
     }
 
+	#[test]
+    fn test_windows_filetime_to_utc() {
+		let windows_filetime:u64 = 134171375539769262;
+		//2026-03-04T22:39:13.976926Z
+		let result = windows_filetime_to_utc(windows_filetime);
+		let expected = Utc.with_ymd_and_hms(2026, 3, 4, 22, 39, 13).unwrap();
+		let td = chrono::Duration::microseconds(976926);
+		let expected = expected + td;
+		assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn test_windows_filetime_unixtimestamp() {
+		let windows_filetime:u64 = 134171375539769262;
+		//2026-03-04T22:39:13.976926Z
+		let result = windows_filetime_unixtimestamp(windows_filetime);
+		let expected = Utc.with_ymd_and_hms(2026, 3, 4, 22, 39, 13).unwrap();
+		assert_eq!(result, expected.timestamp());
+    }
 }
