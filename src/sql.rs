@@ -1,4 +1,5 @@
-﻿use chrono::{DateTime, Local, Utc};
+﻿use anyhow::Result;
+use chrono::{DateTime, Local, Utc};
 use rusqlite::{Connection, Error, OptionalExtension, Row};
 use rusqlite::types::{FromSql, ValueRef};
 use std::{
@@ -153,7 +154,7 @@ where
 }
 
 /// returns the first column of the first row to i64, or none if no rows. Error on NULL or failed cast
-pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>, Box<dyn StdError>> {
+pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>> {
     let conn: Connection;
     if dbfilepath == Path::new("") {
         conn = Connection::open_in_memory()?;
@@ -199,7 +200,7 @@ pub fn query_to_i64(dbfilepath:&Path, sql:&str) -> Result<Option<i64>, Box<dyn S
 }
 
 /// returns the first column of the first row to String, or None if NULL. Error on no rows or failed cast
-pub fn query_to_string(dbfilepath:&Path, sql:&str) -> Result<Option<String>, Box<dyn StdError>> {
+pub fn query_to_string(dbfilepath:&Path, sql:&str) -> Result<Option<String>> {
     let conn: Connection;
     if dbfilepath == Path::new("") {
         conn = Connection::open_in_memory()?;
