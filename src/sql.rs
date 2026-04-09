@@ -5,7 +5,6 @@ use rusqlite::types::{FromSql, ValueRef};
 use std::{
     any::Any,
     convert::TryFrom,
-    error::Error as StdError,
     fmt::Display,
     path::Path,
 };
