@@ -5,14 +5,14 @@ use base64::prelude::*;
 use serde_json::json;
 
 pub struct LLMHost {
-	host: String,
-	port: u16, //if 0, use default for specific function
+	pub host: String,
+	pub port: u16, //if 0, use default for specific function
 }
 
 pub struct LLMCloudflare {
-	url: String,
-	access_client_id: String,
-	access_client_secret: String,
+	pub url: String,
+	pub access_client_id: String,
+	pub access_client_secret: String,
 }
 
 pub enum LLMEndpoint {
@@ -31,38 +31,6 @@ impl From<LLMCloudflare> for LLMEndpoint {
         LLMEndpoint::Cloudflare(value)
     }
 }
-
-// pub async fn inference_on_text(endpoint:LLMEndpoint, prompt:&str) -> Result<String> {
-// 	match endpoint {
-// 		LLMEndpoint::Local(host) => {
-// 			Ok(format!("Local response from {}:{}", host.host, host.port))
-// 		}
-// 		LLMEndpoint::Cloudflare(cf) => {
-// 			Ok(format!("Cloudflare response from {}", cf.url))
-// 		}
-// 	}
-// }
-
-// inference_on_text(
-//     (LLMHost { host: "127.0.0.1".into(), port: 8080 }).into(),
-//     "Hello",
-// ).await?;
-
-
-// inference_on_text(
-//     LLMEndpoint::Local(LLMHost { host: "127.0.0.1".into(), port: 8080 }),
-//     "Hello",
-// ).await?;
-
-// inference_on_text(
-//     LLMEndpoint::Cloudflare(LLMCloudflare {
-//         url: "https://llm.example.com".into(),
-//         access_client_id: "...".into(),
-//         access_client_secret: "...".into(),
-//     }),
-//     "Hello",
-// ).await?;
-
 
 async fn llm_call(endpoint:LLMEndpoint, url_path:&str, payload:String) -> Result<String> {
 	let client = reqwest::Client::new();
