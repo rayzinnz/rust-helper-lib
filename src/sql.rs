@@ -5,7 +5,6 @@ use rusqlite::types::{FromSql, ValueRef};
 use std::{
     any::Any,
     convert::TryFrom,
-    fmt::Display,
     path::Path,
 };
 
@@ -60,12 +59,24 @@ macro_rules! where_sql {
     };
 }
 
+/// Hex encoding helper (no allocations per byte)
+fn sqlite_blob(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+
+    let mut hex = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        hex.push(HEX[(b >> 4) as usize] as char);
+        hex.push(HEX[(b & 0x0F) as usize] as char);
+    }
+
+    format!("X'{}'", hex)
+}
 
 /// Private helper containing the core formatting logic for the inner value (T).
 /// It handles the string escaping and default Display formatting.
 fn format_value_inner<T>(value: &T, comparison_prefix: &str) -> String
 where
-    T: Display + Any + 'static,
+    T: Any + 'static,
 {
     // Use the Any trait for runtime type checking
     let any_value = value as &dyn Any;
@@ -80,6 +91,17 @@ where
         return format!("{}'{}'", comparison_prefix, s.replace("'", "''"));
     }
 
+    // --- Check if the type is a Vec<u8> (blob) ---
+    if let Some(blob) = any_value.downcast_ref::<Vec<u8>>() {
+        // Convert bytes to hex string and format as X'hexstring'
+        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+    }
+    // --- Check if the type is a Vec<u8> (blob) ---
+    if let Some(blob) = any_value.downcast_ref::<&[u8]>() {
+        // Convert bytes to hex string and format as X'hexstring'
+        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+    }
+
     if let Some(s) = any_value.downcast_ref::<DateTime<Utc>>() {
         return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
@@ -90,8 +112,48 @@ where
         //return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
 
-    // --- All other Display types (i32, f64, structs, etc.) ---
-    format!("{}{}", comparison_prefix, value)
+    if let Some(v) = any_value.downcast_ref::<i8>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<i16>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<i32>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<i64>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<i128>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<u8>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<u16>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<u32>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<u64>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<u128>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<f32>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    if let Some(v) = any_value.downcast_ref::<f64>() {
+        return format!("{}{}", comparison_prefix, v);
+    }
+    
+
+    panic!("Unsupported type passed to format_value_inner");
+
+    // // --- All other Display types (i32, f64, structs, etc.) ---
+    // format!("{}{:?}", comparison_prefix, value)
 }
 
 // --- Public API Functions ---
@@ -104,7 +166,7 @@ where
 /// * `input` - A reference to the bare value.
 pub fn dbfmt_t<T>(input: &T) -> String
 where
-    T: Display + Any + 'static,
+    T: Any + 'static,
 {
     format_value_inner(input, "")
 }
@@ -117,7 +179,7 @@ where
 /// * `input` - A reference to the optional value.
 pub fn dbfmt<T>(input: Option<T>) -> String
 where
-    T: Display + Any + 'static,
+    T: Any + 'static,
 {
     match input {
         None => format!("NULL"),
@@ -128,7 +190,7 @@ where
 /// as dbfmt, but prefixes a comparison operator. '=' for Some(), 'IS' for None()
 pub fn dbfmt_comp<T>(input: Option<T>, comparison_operator: CompOp) -> String
 where
-    T: Display + Any + 'static,
+    T: Any + 'static,
 {
     match input {
         None => {

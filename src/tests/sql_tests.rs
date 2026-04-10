@@ -1,22 +1,8 @@
 ﻿use chrono::{TimeZone, Timelike};
 
 use super::*;
-use std::fmt::{Display, Formatter, Result};
 use std::fs;
 use std::path::PathBuf;
-
-// A simple test struct to confirm non-string display formatting
-#[derive(Debug, PartialEq)]
-struct CustomType {
-    id: u32,
-}
-
-// Implement Display for CustomType
-impl Display for CustomType {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "CustomID({})", self.id)
-    }
-}
 
 // --- Tests for dbfmt_nullable ---
 
@@ -44,12 +30,6 @@ fn test_optional_some_string_with_single_quote() {
     assert_eq!(dbfmt(input), "'It''s a test'");
 }
 
-#[test]
-fn test_optional_some_custom_type_display() {
-    let input: Option<CustomType> = Some(CustomType { id: 99 });
-    assert_eq!(dbfmt_comp(input, CompOp::Eq), " = CustomID(99)");
-}
-
 // --- Tests for dbfmt ---
 
 #[test]
@@ -68,12 +48,6 @@ fn test_bare_string_with_single_quote_with_comparison_operator() {
 fn test_bare_i32() {
     let input: i32 = -500;
     assert_eq!(dbfmt_t(&input), "-500");
-}
-
-#[test]
-fn test_bare_custom_type_display() {
-    let input: CustomType = CustomType { id: 123 };
-    assert_eq!(dbfmt_t(&input), "CustomID(123)");
 }
 
 #[test]
@@ -334,6 +308,21 @@ fn test_execute_batch() {
     let sql = "CREATE TABLE t(c); INSERT INTO t VALUES (2); DELETE FROM t;";
     let result = execute_batch(Path::new(""), sql).unwrap();
     assert_eq!(result, ());
+}
+
+#[test]
+fn test_insert_vec() {
+    let data: Vec<u8> = vec![1, 2, 3, 4];
+    let sql = format!("CREATE TABLE t(c BLOB); INSERT INTO t VALUES ({}); DELETE FROM t;", dbfmt_t(&data));
+    let result = execute_batch(Path::new(""), &sql).unwrap();
+    assert_eq!(result, ());
+}
+
+#[test]
+fn test_vec_to_blobhex() {
+    let blob_data = vec![0u8, 0, 0, 0, 20, 228, 220, 207];
+    let formatted = dbfmt(Some(blob_data));
+    assert_eq!(formatted, "X'0000000014E4DCCF'");
 }
 
 #[test]
