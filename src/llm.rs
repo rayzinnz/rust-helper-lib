@@ -4,11 +4,13 @@ use anyhow::{Result, bail};
 use base64::prelude::*;
 use serde_json::json;
 
+#[derive(Clone)]
 pub struct LLMHost {
 	pub host: String,
 	pub port: u16, //if 0, use default for specific function
 }
 
+#[derive(Clone)]
 pub struct LLMCloudflare {
 	pub url: String,
 	pub access_client_id: String,
