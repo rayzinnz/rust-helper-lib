@@ -4,19 +4,20 @@ use anyhow::{Result, bail};
 use base64::prelude::*;
 use serde_json::json;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LLMHost {
 	pub host: String,
 	pub port: u16, //if 0, use default for specific function
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LLMCloudflare {
 	pub url: String,
 	pub access_client_id: String,
 	pub access_client_secret: String,
 }
 
+#[derive(Clone, Debug)]
 pub enum LLMEndpoint {
     Local(LLMHost),
     Cloudflare(LLMCloudflare),
