@@ -17,6 +17,61 @@ pub enum CompOp {
 	LtEq,
 }
 
+// --- 1. The Autoref Specialization Wrapper & Traits ---
+// A simple wrapper to control trait implementations
+pub struct DbFormatWrapper<T>(pub T);
+// High-priority trait for Options
+pub trait FormatOption {
+    fn format_db(self) -> String;
+}
+// Implemented on `&&DbFormatWrapper` (exact match, highest priority)
+impl<T: Any + 'static> FormatOption for &&DbFormatWrapper<&Option<T>> {
+    fn format_db(self) -> String {
+        match self.0 {
+            Some(v) => format_value_inner(v, ""),
+            None => String::from("NULL"),
+        }
+    }
+}
+// Low-priority fallback trait for direct values
+pub trait FormatAny {
+    fn format_db(self) -> String;
+}
+// Implemented on `&DbFormatWrapper` (requires auto-deref, lower priority)
+impl<T: Any + 'static> FormatAny for &DbFormatWrapper<&T> {
+    fn format_db(self) -> String {
+        format_value_inner(self.0, "")
+    }
+}
+
+// --- 2. The Macros ---
+#[macro_export]
+macro_rules! db_format_arg {
+    // Intercept literal `None` immediately to prevent compiler type-inference 
+    // errors (since `None` alone doesn't have a concrete inner type).
+    (None) => {
+        String::from("NULL")
+    };
+    // For all other typed variables or literals, use autoref dispatch.
+    ($arg:expr) => {{
+        // The double reference `&&` forces the compiler to try `FormatOption`
+        // first. If it fails, it auto-derefs to `&` and hits `FormatAny`.
+        (&&DbFormatWrapper(&$arg)).format_db()
+    }};
+}
+#[macro_export]
+macro_rules! db {
+    // Zero-argument fallback
+    ($fmt:expr $(,)?) => {
+        format!($fmt)
+    };
+    // Format loop over arguments
+    ($fmt:expr, $($arg:expr),* $(,)?) => {
+        format!($fmt, $( db_format_arg!($arg) ),*)
+    };
+}
+
+
 /// Defines the `where_sql!` macro.
 ///
 /// This macro takes a base SQL string as its first argument, followed by
@@ -83,21 +138,25 @@ where
 
 	// --- Check if the type is a String (&str or owned String) ---
     // If it is, apply escaping (' becomes '').
-    if let Some(s) = any_value.downcast_ref::<&str>() {
-        return format!("{}'{}'", comparison_prefix, s.replace("'", "''"));
-    }
-
-    if let Some(s) = any_value.downcast_ref::<String>() {
-        return format!("{}'{}'", comparison_prefix, s.replace("'", "''"));
-    }
+    if let Some(s) = any_value.downcast_ref::<&str>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
+    if let Some(s) = any_value.downcast_ref::<String>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
+    if let Some(s) = any_value.downcast_ref::<&&str>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
+    if let Some(s) = any_value.downcast_ref::<&String>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
 
     // --- Check if the type is a Vec<u8> (blob) ---
     if let Some(blob) = any_value.downcast_ref::<Vec<u8>>() {
         // Convert bytes to hex string and format as X'hexstring'
         return format!("{}{}", comparison_prefix, sqlite_blob(blob));
     }
-    // --- Check if the type is a Vec<u8> (blob) ---
     if let Some(blob) = any_value.downcast_ref::<&[u8]>() {
+        // Convert bytes to hex string and format as X'hexstring'
+        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+    }
+    if let Some(blob) = any_value.downcast_ref::<&Vec<u8>>() {
+        // Convert bytes to hex string and format as X'hexstring'
+        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+    }
+    if let Some(blob) = any_value.downcast_ref::<&&[u8]>() {
         // Convert bytes to hex string and format as X'hexstring'
         return format!("{}{}", comparison_prefix, sqlite_blob(blob));
     }
@@ -105,51 +164,46 @@ where
     if let Some(s) = any_value.downcast_ref::<DateTime<Utc>>() {
         return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
-
     if let Some(s) = any_value.downcast_ref::<DateTime<Local>>() {
         //convert local to utc. descision made to always store dates in utc, and use conversion functions for selecting and displaying to local time.
         return format!("{}datetime('{}', 'utc')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
         //return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
+    if let Some(s) = any_value.downcast_ref::<&DateTime<Utc>>() {
+        return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
+    }
+    if let Some(s) = any_value.downcast_ref::<&DateTime<Local>>() {
+        //convert local to utc. descision made to always store dates in utc, and use conversion functions for selecting and displaying to local time.
+        return format!("{}datetime('{}', 'utc')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
+        //return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
+    }
 
-    if let Some(v) = any_value.downcast_ref::<i8>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<i16>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<i32>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<i64>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<i128>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<u8>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<u16>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<u32>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<u64>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<u128>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<f32>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
-    if let Some(v) = any_value.downcast_ref::<f64>() {
-        return format!("{}{}", comparison_prefix, v);
-    }
+    if let Some(v) = any_value.downcast_ref::<i8>()   { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<i16>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<i32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<i64>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<i128>() { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<u8>()   { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<u16>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<u32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<u64>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<u128>() { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<f32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<f64>()  { return format!("{}{}", comparison_prefix, v); }
+
+    if let Some(v) = any_value.downcast_ref::<&i8>()   { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&i16>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&i32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&i64>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&i128>() { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&u8>()   { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&u16>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&u32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&u64>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&u128>() { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&f32>()  { return format!("{}{}", comparison_prefix, v); }
+    if let Some(v) = any_value.downcast_ref::<&f64>()  { return format!("{}{}", comparison_prefix, v); }
     
-
     panic!("Unsupported type passed to format_value_inner");
 
     // // --- All other Display types (i32, f64, structs, etc.) ---

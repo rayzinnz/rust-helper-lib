@@ -344,3 +344,58 @@ fn test_execute_return_changed_rows() {
     }
     assert_eq!(result, 2);
 }
+
+#[test]
+fn test_db_macro() {
+    let name = Some("John's");
+    let none: Option<&str> = None;
+    let result = db!("The dog is {}, my dog is {}, my age is {}.", name, none, 42.3);
+    // Note: format_value_inner escapes ' to '', so "John's" becomes "John''s"
+    assert_eq!(result, "The dog is 'John''s', my dog is NULL, my age is 42.3.");
+}
+
+#[test]
+fn test_db_macro_i32() {
+    let result = db!("my age is {}.", 32i32);
+    assert_eq!(result, "my age is 32.");
+}
+
+#[test]
+fn test_db_macro_f32() {
+    let result = db!("my age is {}.", 32.4f32);
+    assert_eq!(result, "my age is 32.4.");
+}
+
+#[test]
+fn test_db_macro_some_i32() {
+    let age = Some(&32i32);
+    let result = db!("my age is {}.", age);
+    assert_eq!(result, "my age is 32.");
+}
+
+#[test]
+fn test_db_macro_none() {
+    let age:Option<i64> = None;
+    let result = db!("my age is {}.", age);
+    assert_eq!(result, "my age is NULL.");
+}
+
+#[test]
+fn test_db_macro_strs() {
+    let t1 = "Hi";
+    let t2 = Some("my");
+    let t3 = "name".to_string();
+    let t4 = Some("is".to_string());
+    let result = db!("{} {} {} {}", t1, t2, t3, t4);
+    assert_eq!(result, "'Hi' 'my' 'name' 'is'");
+}
+
+#[test]
+fn test_db_macro_vecs() {
+    let t1 = vec![1u8, 2, 40, 100];
+    let t2 = Some(vec![1u8,2,40,100]);
+    let t3 = [1u8, 2, 40, 100].as_slice();
+    let t4 = Some([1u8,2,40,100].as_slice());
+    let result = db!("{} {} {} {}", t1, t2, t3, t4);
+    assert_eq!(result, "X'01022864' X'01022864' X'01022864' X'01022864'");
+}
