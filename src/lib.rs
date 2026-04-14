@@ -27,6 +27,16 @@ pub mod regex;
 pub mod sql;
 pub mod strings;
 
+#[derive(Debug)]
+pub enum TxLog {
+    PrintLn { message: String },
+    Error { message: String },
+    Warning { message: String },
+    Info { message: String },
+    Debug { message: String },
+    Trace { message: String },
+}
+
 pub fn setup_logger(level_filter: LevelFilter) {
 	let logger_config = ConfigBuilder::new()
 		.set_time_offset_to_local().expect("Failed to get local time offset")
