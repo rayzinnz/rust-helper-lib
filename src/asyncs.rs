@@ -1,5 +1,4 @@
-﻿use anyhow::Result;
-use tokio::sync::mpsc::{self, error::SendError};
+﻿use tokio::sync::mpsc::{self, error::SendError};
 
 #[derive(Debug)]
 pub enum TxLog {
@@ -11,17 +10,47 @@ pub enum TxLog {
     Trace { message: String },
 }
 
-pub async fn send_tx_msg(progress_tx: &mpsc::Sender<TxLog>, tx_msg:TxLog) -> Result<(), SendError<TxLog>> {
+pub async fn send_tx_msg(progress_tx: &mpsc::Sender<TxLog>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxLog>> {
+	let message = message.to_string();
+	let txlog: TxLog = match log_level {
+		Some(log_level) => {
+			match log_level {
+				log::Level::Error => TxLog::Error { message },
+				log::Level::Warn => TxLog::Warning { message },
+				log::Level::Info => TxLog::Info { message },
+				log::Level::Debug => TxLog::Debug { message },
+				log::Level::Trace => TxLog::Trace { message },
+			}
+		},
+		None => {
+			TxLog::PrintLn { message }
+		}
+	};
 	progress_tx
-		.send(tx_msg)
+		.send(txlog)
 		.await
 }
 
-pub async fn send_tx_msg_op(progress_tx: Option<&mpsc::Sender<TxLog>>, tx_msg:TxLog) -> Result<(), SendError<TxLog>> {
+pub async fn send_tx_msg_op(progress_tx: Option<&mpsc::Sender<TxLog>>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxLog>> {
 	match progress_tx {
 		Some(progress_tx) => {
+			let message = message.to_string();
+			let txlog: TxLog = match log_level {
+				Some(log_level) => {
+					match log_level {
+						log::Level::Error => TxLog::Error { message },
+						log::Level::Warn => TxLog::Warning { message },
+						log::Level::Info => TxLog::Info { message },
+						log::Level::Debug => TxLog::Debug { message },
+						log::Level::Trace => TxLog::Trace { message },
+					}
+				},
+				None => {
+					TxLog::PrintLn { message }
+				}
+			};
 			progress_tx
-				.send(tx_msg)
+				.send(txlog)
 				.await
 		},
 		None => { Ok(()) }
@@ -31,6 +60,7 @@ pub async fn send_tx_msg_op(progress_tx: Option<&mpsc::Sender<TxLog>>, tx_msg:Tx
 #[cfg(test)]
 mod tests {
     use super::*;
+	use log::Level::*;
     use tokio::runtime::Runtime;
 
     #[test]
@@ -41,7 +71,7 @@ mod tests {
 				let (progress_tx, mut progress_rx) = mpsc::channel::<TxLog>(32);
 				
 				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::spawn(async move { send_tx_msg(&progress_tx, TxLog::Info { message: "A message to send".to_string() }).await });
+				let work_handle = tokio::spawn(async move { send_tx_msg(&progress_tx, Some(Info), "A message to send").await });
 				
 				// Receive and print progress messages as they arrive
 				while let Some(status) = progress_rx.recv().await {
@@ -75,7 +105,7 @@ mod tests {
 				let (progress_tx, mut progress_rx) = mpsc::channel::<TxLog>(32);
 				
 				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::spawn(async move { send_tx_msg_op(Some(&progress_tx), TxLog::PrintLn { message: "A message to send".to_string() }).await });
+				let work_handle = tokio::spawn(async move { send_tx_msg_op(Some(&progress_tx), None, "A message to send").await });
 				
 				// Receive and print progress messages as they arrive
 				while let Some(status) = progress_rx.recv().await {
