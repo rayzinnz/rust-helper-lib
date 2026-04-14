@@ -18,6 +18,7 @@ use std::{
 #[cfg(target_os = "linux")]
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
+pub mod asyncs;
 pub mod clipboard;
 pub mod datetime;
 pub mod llm;
@@ -26,16 +27,6 @@ pub mod paths;
 pub mod regex;
 pub mod sql;
 pub mod strings;
-
-#[derive(Debug)]
-pub enum TxLog {
-    PrintLn { message: String },
-    Error { message: String },
-    Warning { message: String },
-    Info { message: String },
-    Debug { message: String },
-    Trace { message: String },
-}
 
 pub fn setup_logger(level_filter: LevelFilter) {
 	let logger_config = ConfigBuilder::new()
