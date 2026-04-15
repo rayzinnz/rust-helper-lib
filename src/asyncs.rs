@@ -2,7 +2,7 @@
 
 #[derive(Debug)]
 pub enum TxMsg {
-    ProgressNumber { progress: i64 },
+    ProgressNumber { progress: f64 },
     Progress { message: String },
     PrintLn { message: String },
     Error { message: String },
