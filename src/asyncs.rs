@@ -1,104 +1,58 @@
 ﻿use tokio::sync::mpsc::{self, error::SendError};
 
 #[derive(Debug)]
-pub enum TxMsg {
-    ProgressNumber { progress: f64 },
-    Progress { message: String },
-    PrintLn { message: String },
-    Error { message: String },
-    Warn { message: String },
-    Info { message: String },
-    Debug { message: String },
-    Trace { message: String },
+#[allow(dead_code)]
+pub struct TxMsg {
+	txlevel:TxLevel,
+	message: String,
 }
 
-pub async fn send_tx_msg(progress_tx: &mpsc::Sender<TxMsg>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxMsg>> {
+#[derive(Debug)]
+pub enum TxLevel {
+    Progress,
+    PrintLn,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+pub async fn send_tx_msg(progress_tx: &mpsc::Sender<TxMsg>, level: TxLevel, message:&str) -> Result<(), SendError<TxMsg>> {
 	let message = message.to_string();
-	let txlog: TxMsg = match log_level {
-		Some(log_level) => {
-			match log_level {
-				log::Level::Error => TxMsg::Error { message },
-				log::Level::Warn => TxMsg::Warn { message },
-				log::Level::Info => TxMsg::Info { message },
-				log::Level::Debug => TxMsg::Debug { message },
-				log::Level::Trace => TxMsg::Trace { message },
-			}
-		},
-		None => {
-			TxMsg::PrintLn { message }
-		}
-	};
+	let txmsg: TxMsg = TxMsg { txlevel: level, message };
 	progress_tx
-		.send(txlog)
+		.send(txmsg)
 		.await
 }
 
-pub fn send_tx_msg_sync(progress_tx: &mpsc::Sender<TxMsg>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxMsg>> {
+pub fn send_tx_msg_sync(progress_tx: &mpsc::Sender<TxMsg>, level: TxLevel, message:&str) -> Result<(), SendError<TxMsg>> {
 	let message = message.to_string();
-	let txlog: TxMsg = match log_level {
-		Some(log_level) => {
-			match log_level {
-				log::Level::Error => TxMsg::Error { message },
-				log::Level::Warn => TxMsg::Warn { message },
-				log::Level::Info => TxMsg::Info { message },
-				log::Level::Debug => TxMsg::Debug { message },
-				log::Level::Trace => TxMsg::Trace { message },
-			}
-		},
-		None => {
-			TxMsg::PrintLn { message }
-		}
-	};
+	let txmsg: TxMsg = TxMsg { txlevel: level, message };
 	progress_tx
-		.blocking_send(txlog)
+		.blocking_send(txmsg)
 }
 
-pub async fn send_tx_msg_op(progress_tx: Option<&mpsc::Sender<TxMsg>>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxMsg>> {
+pub async fn send_tx_msg_op(progress_tx: Option<&mpsc::Sender<TxMsg>>, level: TxLevel, message:&str) -> Result<(), SendError<TxMsg>> {
 	match progress_tx {
 		Some(progress_tx) => {
 			let message = message.to_string();
-			let txlog: TxMsg = match log_level {
-				Some(log_level) => {
-					match log_level {
-						log::Level::Error => TxMsg::Error { message },
-						log::Level::Warn => TxMsg::Warn { message },
-						log::Level::Info => TxMsg::Info { message },
-						log::Level::Debug => TxMsg::Debug { message },
-						log::Level::Trace => TxMsg::Trace { message },
-					}
-				},
-				None => {
-					TxMsg::PrintLn { message }
-				}
-			};
+			let txmsg: TxMsg = TxMsg { txlevel: level, message };
 			progress_tx
-				.send(txlog)
+				.send(txmsg)
 				.await
 		},
 		None => { Ok(()) }
 	}
 }
 
-pub fn send_tx_msg_op_sync(progress_tx: Option<&mpsc::Sender<TxMsg>>, log_level: Option<log::Level>, message:&str) -> Result<(), SendError<TxMsg>> {
+pub fn send_tx_msg_op_sync(progress_tx: Option<&mpsc::Sender<TxMsg>>, level: TxLevel, message:&str) -> Result<(), SendError<TxMsg>> {
 	match progress_tx {
 		Some(progress_tx) => {
 			let message = message.to_string();
-			let txlog: TxMsg = match log_level {
-				Some(log_level) => {
-					match log_level {
-						log::Level::Error => TxMsg::Error { message },
-						log::Level::Warn => TxMsg::Warn { message },
-						log::Level::Info => TxMsg::Info { message },
-						log::Level::Debug => TxMsg::Debug { message },
-						log::Level::Trace => TxMsg::Trace { message },
-					}
-				},
-				None => {
-					TxMsg::PrintLn { message }
-				}
-			};
+			let txmsg: TxMsg = TxMsg { txlevel: level, message };
 			progress_tx
-				.blocking_send(txlog)
+				.blocking_send(txmsg)
 		},
 		None => { Ok(()) }
 	}
@@ -106,40 +60,38 @@ pub fn send_tx_msg_op_sync(progress_tx: Option<&mpsc::Sender<TxMsg>>, log_level:
 
 #[cfg(test)]
 mod tests {
+    use std::thread;
+
     use super::*;
-	use log::Level::*;
     use tokio::runtime::Runtime;
 
     #[test]
     fn test_send_tx_msg_sync() {
 		let mut result:String = String::new();
-		if let Ok(rt) = Runtime::new() {
-			let _rt_result = rt.block_on(async {
-				let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
-				
-				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::task::spawn_blocking( move || { send_tx_msg_sync(&progress_tx, Some(Info), "A message to send") });
-				
-				// Receive and print progress messages as they arrive
-				while let Some(status) = progress_rx.recv().await {
-					match status {
-						TxMsg::ProgressNumber { progress } => { result = format!("ProgressNumber: {}", progress); },
-						TxMsg::Progress { message } => { result = format!("Progress: {}", message); },
-						TxMsg::PrintLn { message } => { result = format!("PrintLn: {}", message); },
-						TxMsg::Error { message } => { result = format!("Error: {}", message); },
-						TxMsg::Warn { message } => { result = format!("Warning: {}", message); },
-						TxMsg::Info { message } => { result = format!("Info: {}", message); },
-						TxMsg::Debug { message } => { result = format!("Debug: {}", message); },
-						TxMsg::Trace { message } => { result = format!("Trace: {}", message); },
-					}
-				}
 
-				// Wait for the work to finish and get the final result
-				match work_handle.await.unwrap() {
-					Ok(_) => (),
-					Err(e) => eprintln!("[ERROR] {}", e),
-				}            
-			});
+		let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
+		
+		// Spawn the work task in a separate thread so we can receive progress concurrently
+		let join_handle = thread::Builder::new()
+			.spawn(move || { send_tx_msg_sync(&progress_tx, TxLevel::Info, "A message to send") })
+			.expect("Failed to spawn thread");
+		
+		// Receive and print progress messages as they arrive
+		while let Some(txmsg) = progress_rx.blocking_recv() {
+			match txmsg.txlevel {
+				TxLevel::Progress => { result = format!("Progress: {}", txmsg.message); },
+				TxLevel::PrintLn => { result = format!("PrintLn: {}", txmsg.message); },
+				TxLevel::Error => { result = format!("Error: {}", txmsg.message); },
+				TxLevel::Warn => { result = format!("Warn: {}", txmsg.message); },
+				TxLevel::Info => { result = format!("Info: {}", txmsg.message); },
+				TxLevel::Debug => { result = format!("Debug: {}", txmsg.message); },
+				TxLevel::Trace => { result = format!("Trace: {}", txmsg.message); },
+			}
+		}
+
+		// Wait for the work to finish and get the final result
+		if let Err(e) = join_handle.join() {
+			eprintln!("thread join error: {:?}", e);
 		}
 
 		let expected = String::from("Info: A message to send");
@@ -149,36 +101,31 @@ mod tests {
     #[test]
     fn test_send_tx_msg_op_sync() {
 		let mut result:String = String::new();
-		if let Ok(rt) = Runtime::new() {
-			let _rt_result = rt.block_on(async {
-				let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
-				
-				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::task::spawn_blocking(move || { send_tx_msg_op_sync(Some(&progress_tx), None, "A message to send") });
-				
-				// Receive and print progress messages as they arrive
-				while let Some(status) = progress_rx.recv().await {
-					match status {
-						TxMsg::ProgressNumber { progress } => { result = format!("ProgressNumber: {}", progress); },
-						TxMsg::Progress { message } => { result = format!("Progress: {}", message); },
-						TxMsg::PrintLn { message } => { result = format!("PrintLn: {}", message); },
-						TxMsg::Error { message } => { result = format!("Error: {}", message); },
-						TxMsg::Warn { message } => { result = format!("Warning: {}", message); },
-						TxMsg::Info { message } => { result = format!("Info: {}", message); },
-						TxMsg::Debug { message } => { result = format!("Debug: {}", message); },
-						TxMsg::Trace { message } => { result = format!("Trace: {}", message); },
-					}
-				}
-
-				// Wait for the work to finish and get the final result
-				match work_handle.await.unwrap() {
-					Ok(_) => (),
-					Err(e) => eprintln!("[ERROR] {}", e),
-				}            
-			});
+		let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
+		
+		// Spawn the work task in a separate thread so we can receive progress concurrently
+		let join_handle = thread::Builder::new()
+			.spawn(move || { send_tx_msg_op_sync(Some(&progress_tx), TxLevel::Progress, "A message to send") })
+			.expect("Failed to spawn thread");
+		
+		// Receive and print progress messages as they arrive
+		while let Some(txmsg) = progress_rx.blocking_recv() {
+			match txmsg.txlevel {
+				TxLevel::Progress => { result = format!("Progress: {}", txmsg.message); },
+				TxLevel::PrintLn => { result = format!("PrintLn: {}", txmsg.message); },
+				TxLevel::Error => { result = format!("Error: {}", txmsg.message); },
+				TxLevel::Warn => { result = format!("Warn: {}", txmsg.message); },
+				TxLevel::Info => { result = format!("Info: {}", txmsg.message); },
+				TxLevel::Debug => { result = format!("Debug: {}", txmsg.message); },
+				TxLevel::Trace => { result = format!("Trace: {}", txmsg.message); },
+			}
 		}
 
-		let expected = String::from("PrintLn: A message to send");
+		if let Err(e) = join_handle.join() {
+			eprintln!("thread join error: {:?}", e);
+		}
+
+		let expected = String::from("Progress: A message to send");
 		assert_eq!(result, expected);
     }
 
@@ -190,19 +137,18 @@ mod tests {
 				let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
 				
 				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::spawn(async move { send_tx_msg(&progress_tx, Some(Info), "A message to send").await });
+				let work_handle = tokio::spawn(async move { send_tx_msg(&progress_tx, TxLevel::Warn, "A message to send").await });
 				
 				// Receive and print progress messages as they arrive
-				while let Some(status) = progress_rx.recv().await {
-					match status {
-						TxMsg::ProgressNumber { progress } => { result = format!("ProgressNumber: {}", progress); },
-						TxMsg::Progress { message } => { result = format!("Progress: {}", message); },
-						TxMsg::PrintLn { message } => { result = format!("PrintLn: {}", message); },
-						TxMsg::Error { message } => { result = format!("Error: {}", message); },
-						TxMsg::Warn { message } => { result = format!("Warning: {}", message); },
-						TxMsg::Info { message } => { result = format!("Info: {}", message); },
-						TxMsg::Debug { message } => { result = format!("Debug: {}", message); },
-						TxMsg::Trace { message } => { result = format!("Trace: {}", message); },
+				while let Some(txmsg) = progress_rx.recv().await {
+					match txmsg.txlevel {
+						TxLevel::Progress => { result = format!("Progress: {}", txmsg.message); },
+						TxLevel::PrintLn => { result = format!("PrintLn: {}", txmsg.message); },
+						TxLevel::Error => { result = format!("Error: {}", txmsg.message); },
+						TxLevel::Warn => { result = format!("Warn: {}", txmsg.message); },
+						TxLevel::Info => { result = format!("Info: {}", txmsg.message); },
+						TxLevel::Debug => { result = format!("Debug: {}", txmsg.message); },
+						TxLevel::Trace => { result = format!("Trace: {}", txmsg.message); },
 					}
 				}
 
@@ -214,7 +160,7 @@ mod tests {
 			});
 		}
 
-		let expected = String::from("Info: A message to send");
+		let expected = String::from("Warn: A message to send");
 		assert_eq!(result, expected);
     }
 
@@ -226,19 +172,18 @@ mod tests {
 				let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
 				
 				// Spawn the work task in a separate task so we can receive progress concurrently
-				let work_handle = tokio::spawn(async move { send_tx_msg_op(Some(&progress_tx), None, "A message to send").await });
+				let work_handle = tokio::spawn(async move { send_tx_msg_op(Some(&progress_tx), TxLevel::PrintLn, "A message to send").await });
 				
 				// Receive and print progress messages as they arrive
-				while let Some(status) = progress_rx.recv().await {
-					match status {
-						TxMsg::ProgressNumber { progress } => { result = format!("ProgressNumber: {}", progress); },
-						TxMsg::Progress { message } => { result = format!("Progress: {}", message); },
-						TxMsg::PrintLn { message } => { result = format!("PrintLn: {}", message); },
-						TxMsg::Error { message } => { result = format!("Error: {}", message); },
-						TxMsg::Warn { message } => { result = format!("Warning: {}", message); },
-						TxMsg::Info { message } => { result = format!("Info: {}", message); },
-						TxMsg::Debug { message } => { result = format!("Debug: {}", message); },
-						TxMsg::Trace { message } => { result = format!("Trace: {}", message); },
+				while let Some(txmsg) = progress_rx.recv().await {
+					match txmsg.txlevel {
+						TxLevel::Progress => { result = format!("Progress: {}", txmsg.message); },
+						TxLevel::PrintLn => { result = format!("PrintLn: {}", txmsg.message); },
+						TxLevel::Error => { result = format!("Error: {}", txmsg.message); },
+						TxLevel::Warn => { result = format!("Warn: {}", txmsg.message); },
+						TxLevel::Info => { result = format!("Info: {}", txmsg.message); },
+						TxLevel::Debug => { result = format!("Debug: {}", txmsg.message); },
+						TxLevel::Trace => { result = format!("Trace: {}", txmsg.message); },
 					}
 				}
 
