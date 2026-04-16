@@ -1,10 +1,9 @@
 ﻿use tokio::sync::mpsc::{self, error::SendError};
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct TxMsg {
-	txlevel:TxLevel,
-	message: String,
+	pub txlevel:TxLevel,
+	pub message: String,
 }
 
 #[derive(Debug)]
