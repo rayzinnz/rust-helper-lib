@@ -178,6 +178,7 @@ where
         //return format!("{}datetime('{}')", comparison_prefix, s.format("%Y-%m-%d %H:%M:%S"));
     }
 
+    if let Some(v) = any_value.downcast_ref::<usize>() { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<i8>()   { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<i16>()  { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<i32>()  { return format!("{}{}", comparison_prefix, v); }
@@ -191,6 +192,7 @@ where
     if let Some(v) = any_value.downcast_ref::<f32>()  { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<f64>()  { return format!("{}{}", comparison_prefix, v); }
 
+    if let Some(v) = any_value.downcast_ref::<&usize>() { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<&i8>()   { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<&i16>()  { return format!("{}{}", comparison_prefix, v); }
     if let Some(v) = any_value.downcast_ref::<&i32>()  { return format!("{}{}", comparison_prefix, v); }

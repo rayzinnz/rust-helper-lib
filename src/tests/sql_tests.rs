@@ -361,6 +361,12 @@ fn test_db_macro_i32() {
 }
 
 #[test]
+fn test_db_macro_usize() {
+    let result = db!("my age is {}.", &44usize);
+    assert_eq!(result, "my age is 44.");
+}
+
+#[test]
 fn test_db_macro_f32() {
     let result = db!("my age is {}.", 32.4f32);
     assert_eq!(result, "my age is 32.4.");
