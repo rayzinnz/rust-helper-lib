@@ -1,4 +1,4 @@
-﻿use std::path::{Component, Path, PathBuf};
+﻿use std::{ffi::OsStr, path::{Component, Path, PathBuf}};
 
 pub fn format_bytes(bytes:u64) -> String {
 	if bytes < 1_024 {
@@ -48,6 +48,14 @@ pub fn path_to_agnostic_relative(path: &Path, base: &Path) -> String {
 	return rtn;
 }
 
+pub fn set_separator_windows(path: &Path) -> PathBuf {
+	PathBuf::from(
+		path.components().into_iter()
+			.filter_map(|x| (![OsStr::new("\\"),OsStr::new("/")].contains(&x.as_os_str())).then_some(x.as_os_str()))
+			.collect::<Vec<&OsStr>>()
+			.join(OsStr::new("\\"))
+	)
+}
 
 /// a function to append an extension
 /// as at writing this, `PathBuf::add_extension` fn is blocked as unstable
@@ -120,6 +128,26 @@ mod tests {
     fn test_format_bytes_mb() {
 		let expected = String::from("953.7MB");
 		let result = format_bytes(1_000_000_000);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_set_separator_windows() {
+        let original = PathBuf::from(r"c:\temp/abc/drag.txt");
+        let expected = PathBuf::from(r"c:\temp\abc\drag.txt");
+		let result = set_separator_windows(&original);
+		let expected = expected.as_os_str();
+		let result = result.as_os_str();
+        assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn test_set_separator_windows_unc() {
+        let original = PathBuf::from("\\\\XXPA001APVP731\\itaag016_elimsfgs\\Data\\PRD\\AAG16_EUNZWE_PRD/WebRequests/Data/Processed\\MetalsICPPreparedStatus_SqlRequest_2026-04-23 14-44-21.xml");
+        let expected = PathBuf::from("\\\\XXPA001APVP731\\itaag016_elimsfgs\\Data\\PRD\\AAG16_EUNZWE_PRD\\WebRequests\\Data\\Processed\\MetalsICPPreparedStatus_SqlRequest_2026-04-23 14-44-21.xml");
+		let result = set_separator_windows(&original);
+		let expected = expected.as_os_str();
+		let result = result.as_os_str();
         assert_eq!(result, expected);
     }
 }
