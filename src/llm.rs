@@ -2,6 +2,7 @@
 
 use anyhow::{Result, bail};
 use base64::prelude::*;
+use nalgebra::DVector;
 use serde_json::json;
 
 #[derive(Clone, Debug)]
@@ -176,14 +177,16 @@ async fn get_embeddings_internal(endpoint:LLMEndpoint, text:&str) -> Result<Stri
 	}
 }
 
+/// always normalised embeddings
 pub async fn get_embeddings(endpoint:LLMEndpoint, text:&str) -> Result<Vec<f64>> {
 	let embeddings = get_embeddings_internal(endpoint, text).await?;
 	let embeddings: Vec<f64> = embeddings
 		.split(',')
 		.map(|x| x.parse::<f64>().expect(&format!("error parsing: {}", x)))
 		.collect();
-	
-	Ok(embeddings)
+	let mut embeddings = DVector::from_vec(embeddings);
+	embeddings.normalize_mut();
+	Ok(embeddings.as_slice().to_vec())
 }
 
 pub async fn get_embeddings_f32(endpoint:LLMEndpoint, text:&str) -> Result<Vec<f32>> {
@@ -192,6 +195,7 @@ pub async fn get_embeddings_f32(endpoint:LLMEndpoint, text:&str) -> Result<Vec<f
 		.split(',')
 		.map(|x| x.parse::<f32>().expect(&format!("error parsing: {}", x)))
 		.collect();
-	
-	Ok(embeddings)
+	let mut embeddings = DVector::from_vec(embeddings);
+	embeddings.normalize_mut();
+	Ok(embeddings.as_slice().to_vec())
 }
