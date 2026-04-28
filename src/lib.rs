@@ -3,10 +3,9 @@ use crossterm::event::{self, Event, KeyCode};
 use log::*;
 use simplelog::*;
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    fs::File, path::Path, sync::{
+        Arc, atomic::{AtomicBool, Ordering}
+    }
 };
 #[cfg(target_os = "linux")]
 use std::{
@@ -28,18 +27,24 @@ pub mod regex;
 pub mod sql;
 pub mod strings;
 
-pub fn setup_logger(level_filter: LevelFilter) {
-	let logger_config = ConfigBuilder::new()
-		.set_time_offset_to_local().expect("Failed to get local time offset")
-		.set_time_format_custom(format_description!("[hour]:[minute]:[second].[subsecond digits:3]"))
-		.build();
-	CombinedLogger::init(
-		vec![
-			TermLogger::new(level_filter, logger_config, TerminalMode::Mixed, ColorChoice::Auto),
-			// TermLogger::new(LevelFilter::Debug, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-			// WriteLogger::new(LevelFilter::Error, Config::default(), File::create("my_rust_binary.log").unwrap()),
-		]
-	).unwrap();
+pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filter_allow: &'static str, filter_ignore: &'static str) {
+	let mut logger_config = ConfigBuilder::new();
+    let logger_config = logger_config.set_time_offset_to_local().expect("Failed to get local time offset");
+    let mut logger_config = logger_config.set_time_format_custom(format_description!("[hour]:[minute]:[second].[subsecond digits:3]"));
+    logger_config = logger_config.set_time_offset_to_local().expect("Failed to get local time offset");
+	if !filter_allow.is_empty() {
+        logger_config = logger_config.add_filter_allow_str(filter_allow);
+    }
+	if !filter_ignore.is_empty() {
+        logger_config = logger_config.add_filter_ignore_str(filter_ignore);
+    }
+    let logger_config = logger_config.build();
+    let mut loggers: Vec<Box<(dyn SharedLogger + 'static)>> = Vec::new();
+    loggers.push(TermLogger::new(level_filter, logger_config, TerminalMode::Mixed, ColorChoice::Auto));
+    if let Some(log_to_path) = log_to_path {
+        loggers.push(WriteLogger::new(LevelFilter::Error, Config::default(), File::create(log_to_path).unwrap()));
+    }
+    CombinedLogger::init(loggers).unwrap();
 }
 
 pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
