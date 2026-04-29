@@ -1,12 +1,17 @@
 ﻿use anyhow::Result;
 use chrono::{DateTime, Local, Utc};
 use rusqlite::{Connection, Error, OptionalExtension, Row};
-use rusqlite::types::{FromSql, ValueRef};
+use rusqlite::types::{FromSql, FromSqlResult, Value, ValueRef};
 use std::{
     any::Any,
     convert::TryFrom,
     path::Path,
 };
+use zstd::stream::{decode_all, encode_all};
+
+
+/// Magic header to mark zstd-compressed blobs
+const ZSTD_MAGIC: &[u8] = b"ZST\0";
 
 pub enum CompOp {
 	Eq,
@@ -28,7 +33,7 @@ pub trait FormatOption {
 impl<T: Any + 'static> FormatOption for &&DbFormatWrapper<&Option<T>> {
     fn format_db(self) -> String {
         match self.0 {
-            Some(v) => format_value_inner(v, ""),
+            Some(v) => format_value_inner(v, "", true),
             None => String::from("NULL"),
         }
     }
@@ -40,7 +45,7 @@ pub trait FormatAny {
 // Implemented on `&DbFormatWrapper` (requires auto-deref, lower priority)
 impl<T: Any + 'static> FormatAny for &DbFormatWrapper<&T> {
     fn format_db(self) -> String {
-        format_value_inner(self.0, "")
+        format_value_inner(self.0, "", true )
     }
 }
 
@@ -70,6 +75,58 @@ macro_rules! db {
         format!($fmt, $( db_format_arg!($arg) ),*)
     };
 }
+
+//no compression
+pub struct DbFormatWrapperNoCompression<T>(pub T);
+// High-priority trait for Options
+pub trait FormatOptionNoCompression {
+    fn format_db(self) -> String;
+}
+// Implemented on `&&DbFormatWrapperNoCompression` (exact match, highest priority)
+impl<T: Any + 'static> FormatOptionNoCompression for &&DbFormatWrapperNoCompression<&Option<T>> {
+    fn format_db(self) -> String {
+        match self.0 {
+            Some(v) => format_value_inner(v, "", false),
+            None => String::from("NULL"),
+        }
+    }
+}
+// Low-priority fallback trait for direct values
+pub trait FormatAnyNoCompression {
+    fn format_db(self) -> String;
+}
+// Implemented on `&DbFormatWrapperNoCompression` (requires auto-deref, lower priority)
+impl<T: Any + 'static> FormatAnyNoCompression for &DbFormatWrapperNoCompression<&T> {
+    fn format_db(self) -> String {
+        format_value_inner(self.0, "", false)
+    }
+}
+#[macro_export]
+macro_rules! db_format_arg_no_compression {
+    // Intercept literal `None` immediately to prevent compiler type-inference 
+    // errors (since `None` alone doesn't have a concrete inner type).
+    (None) => {
+        String::from("NULL")
+    };
+    // For all other typed variables or literals, use autoref dispatch.
+    ($arg:expr) => {{
+        // The double reference `&&` forces the compiler to try `FormatOption`
+        // first. If it fails, it auto-derefs to `&` and hits `FormatAny`.
+        (&&DbFormatWrapperNoCompression(&$arg)).format_db()
+    }};
+}
+#[macro_export]
+macro_rules! db_nocomp {
+    // Zero-argument fallback
+    ($fmt:expr $(,)?) => {
+        format!($fmt)
+    };
+    // Format loop over arguments
+    ($fmt:expr, $($arg:expr),* $(,)?) => {
+        format!($fmt, $( db_format_arg_no_compression!($arg) ),*)
+    };
+}
+
 
 
 /// Defines the `where_sql!` macro.
@@ -114,6 +171,32 @@ macro_rules! where_sql {
     };
 }
 
+/// Decompress if zstd magic header is present
+fn maybe_decompress_blob(bytes: &[u8]) -> Vec<u8> {
+    if bytes.starts_with(ZSTD_MAGIC) {
+        decode_all(&bytes[ZSTD_MAGIC.len()..])
+            .expect("zstd decompression failed")
+    } else {
+        bytes.to_vec()
+    }
+}
+
+/// Compress bytes using zstd and prefix with magic header
+fn zstd_compress_with_magic(bytes: &[u8]) -> Vec<u8> {
+    // Compression level:
+    // 1–3: very fast
+    // 5: balanced default
+    // 9+: archival
+    let compressed =
+        encode_all(bytes, 5).expect("zstd compression failed");
+
+    //prefix with magic bytes
+    let mut out = Vec::with_capacity(ZSTD_MAGIC.len() + compressed.len());
+    out.extend_from_slice(ZSTD_MAGIC);
+    out.extend_from_slice(&compressed);
+    out
+}
+
 /// Hex encoding helper (no allocations per byte)
 fn sqlite_blob(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789ABCDEF";
@@ -129,7 +212,7 @@ fn sqlite_blob(bytes: &[u8]) -> String {
 
 /// Private helper containing the core formatting logic for the inner value (T).
 /// It handles the string escaping and default Display formatting.
-fn format_value_inner<T>(value: &T, comparison_prefix: &str) -> String
+fn format_value_inner<T>(value: &T, comparison_prefix: &str, is_compress_blob: bool) -> String
 where
     T: Any + 'static,
 {
@@ -143,22 +226,33 @@ where
     if let Some(s) = any_value.downcast_ref::<&&str>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
     if let Some(s) = any_value.downcast_ref::<&String>() { return format!("{}'{}'", comparison_prefix, s.replace("'", "''")); }
 
+
+    // --- Check if the type is a blob ---
+    let format_blob = |bytes: &[u8]| {
+        let bytes = if is_compress_blob {
+            zstd_compress_with_magic(bytes)
+        } else {
+            bytes.to_vec()
+        };
+        format!("{}{}", comparison_prefix, sqlite_blob(&bytes))
+    };
+
     // --- Check if the type is a Vec<u8> (blob) ---
     if let Some(blob) = any_value.downcast_ref::<Vec<u8>>() {
         // Convert bytes to hex string and format as X'hexstring'
-        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+        return format_blob(blob);
     }
     if let Some(blob) = any_value.downcast_ref::<&[u8]>() {
         // Convert bytes to hex string and format as X'hexstring'
-        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+        return format_blob(blob);
     }
     if let Some(blob) = any_value.downcast_ref::<&Vec<u8>>() {
         // Convert bytes to hex string and format as X'hexstring'
-        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+        return format_blob(blob);
     }
     if let Some(blob) = any_value.downcast_ref::<&&[u8]>() {
         // Convert bytes to hex string and format as X'hexstring'
-        return format!("{}{}", comparison_prefix, sqlite_blob(blob));
+        return format_blob(blob);
     }
 
     if let Some(s) = any_value.downcast_ref::<DateTime<Utc>>() {
@@ -224,7 +318,13 @@ pub fn dbfmt_t<T>(input: &T) -> String
 where
     T: Any + 'static,
 {
-    format_value_inner(input, "")
+    format_value_inner(input, "", false)
+}
+pub fn dbfmt_t_comp<T>(input: &T) -> String
+where
+    T: Any + 'static,
+{
+    format_value_inner(input, "", true)
 }
 
 /// Formats an optional value (Option<T>). This handles the None case.
@@ -239,7 +339,7 @@ where
 {
     match input {
         None => format!("NULL"),
-        Some(value) => format_value_inner(&value, ""),
+        Some(value) => format_value_inner(&value, "", false),
     }
 }
 
@@ -265,7 +365,7 @@ where
 				CompOp::Lt => " < ",
 				CompOp::LtEq => " <= ",
 			};
-			format_value_inner(&value, co)
+			format_value_inner(&value, co, false)
 		},
     }
 }
@@ -341,7 +441,7 @@ pub fn query_to_string(dbfilepath:&Path, sql:&str) -> Result<Option<String>> {
                 // BLOB: Convert byte slice to a hexadecimal String.
                 ValueRef::Blob(bytes) => {
                     // Use the hex crate to encode the bytes into a lowercase hex string
-                    Ok(Some(hex::encode(bytes)))
+                    Ok(Some(hex::encode(maybe_decompress_blob(bytes))))
                 },
                 // If it's Text, safely convert the byte slice to a String.
                 ValueRef::Text(bytes) => {
@@ -404,6 +504,184 @@ where
         // If we got any other error (e.g., SQL error, I/O error), propagate it
         Err(e) => Err(e),
     }
+}
+
+/// for getting compressed data with using query_to_tuples(), and default FromSql things.
+/// e.g. `let result = query_to_tuples::<(Option<i64>, MaybeDecompressed<Vec<u8>>)>(&dbpath, sql)?;`
+pub struct MaybeDecompressed<T>(pub T);
+impl<T> FromSql for MaybeDecompressed<T>
+where
+    T: FromSql,
+{
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Blob(b) => {
+                // your custom logic
+                let decompressed = maybe_decompress_blob(b);
+
+                // IMPORTANT: feed it back as a ValueRef
+                let vref = ValueRef::Blob(&decompressed);
+                T::column_result(vref).map(MaybeDecompressed)
+            }
+            other => T::column_result(other).map(MaybeDecompressed),
+        }
+    }
+}
+
+/// Convert a Vec<Value> into some tuple T
+pub trait TryFromValues: Sized {
+    fn try_from_values(values: Vec<Value>) -> Result<Self, Error>;
+}
+
+macro_rules! tuple_try_from_values {
+    ($($field:ident),*) => {
+        impl<$($field,)*> TryFromValues for ($($field,)*)
+        where
+            $($field: FromValue,)*
+        {
+            fn try_from_values(values: Vec<Value>) -> Result<Self, Error> {
+                #[allow(unused_variables, unused_mut)]
+                let mut iter = values.into_iter();
+
+                $(
+                    #[expect(non_snake_case)]
+                    let $field: $field = FromValue::from_value(
+                        iter.next()
+                            .ok_or(Error::InvalidColumnIndex(0))?
+                    )?;
+                )*
+
+                Ok(($($field,)*))
+            }
+        }
+    };
+}
+
+macro_rules! tuples_try_from_values {
+    () => {
+        tuple_try_from_values!();
+    };
+    ($first:ident $(, $rest:ident)*) => {
+        tuple_try_from_values!($first $(, $rest)*);
+        tuples_try_from_values!($($rest),*);
+    };
+}
+
+// Match rusqlite arity
+tuples_try_from_values!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+
+// Local trait — satisfies orphan rules
+pub trait FromValue: Sized {
+    fn from_value(v: Value) -> Result<Self, Error>;
+}
+impl FromValue for u8 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as u8),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for u16 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as u16),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for u32 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as u32),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for u64 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as u64),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for i8 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as i8),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for i16 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as i16),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for i32 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i as i32),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for i64 {fn from_value(v: Value) -> Result<Self, Error> {match v {Value::Integer(i) => Ok(i),_ => Err(Error::InvalidColumnType(0,"INTEGER".into(),v.data_type(),)),}}}
+impl FromValue for f32 {fn from_value(v: Value) -> Result<Self, Error> {match v {
+    Value::Real(i) => Ok(i as f32),
+    Value::Integer(i) => Ok(i as f32),
+    _ => Err(Error::InvalidColumnType(0,"REAL".into(),v.data_type(),)),}}}
+impl FromValue for f64 {fn from_value(v: Value) -> Result<Self, Error> {match v {
+    Value::Real(i) => Ok(i),
+    Value::Integer(i) => Ok(i as f64),
+    _ => Err(Error::InvalidColumnType(0,"REAL".into(),v.data_type(),)),}}}
+impl FromValue for String {
+    fn from_value(v: Value) -> Result<Self, Error> {
+        match v {
+            Value::Text(s) => Ok(s),
+            Value::Blob(b) => String::from_utf8(b).map_err(|e| {
+                Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            }),
+            _ => Err(Error::InvalidColumnType(
+                0,
+                "TEXT".into(),
+                v.data_type(),
+            )),
+        }
+    }
+}
+impl FromValue for Vec<u8> {
+    fn from_value(v: Value) -> Result<Self, Error> {
+        match v {
+            Value::Blob(b) => Ok(b),
+            Value::Text(s) => Ok(s.into_bytes()),
+            _ => Err(Error::InvalidColumnType(
+                0,
+                "BLOB".into(),
+                v.data_type(),
+            )),
+        }
+    }
+}
+impl<T> FromValue for Option<T>
+where
+    T: FromValue,
+{
+    fn from_value(v: Value) -> Result<Self, Error> {
+        match v {
+            Value::Null => Ok(None),
+            other => T::from_value(other).map(Some),
+        }
+    }
+}
+
+fn row_to_values(row: &rusqlite::Row<'_>, column_count: usize) -> Vec<Value> {
+    let mut out = Vec::with_capacity(column_count);
+
+    for i in 0..column_count {
+        let v = match row.get_ref(i).expect("could not row.get_ref(i) in helperlib::sql::row_to_values()") {
+            ValueRef::Null => Value::Null,
+            ValueRef::Integer(i) => Value::Integer(i),
+            ValueRef::Real(f) => Value::Real(f),
+            ValueRef::Text(t) => Value::Text(String::from_utf8(t.to_vec()).unwrap()),
+            ValueRef::Blob(b) => Value::Blob(maybe_decompress_blob(b)),
+        };
+        out.push(v);
+    }
+
+    out
+}
+
+pub fn query_to_tuples_with_decompression<T>(
+    dbfilepath: &Path,
+    sql: &str,
+) -> Result<Vec<T>, Error>
+where
+    T: TryFromValues,
+{
+    // 1. Open connection
+    let conn = if dbfilepath == Path::new("") {
+        Connection::open_in_memory()?
+    } else {
+        Connection::open(dbfilepath)?
+    };
+
+    // 2. Prepare statement
+    let mut stmt = conn.prepare(sql)?;
+    
+    // 3. Query and map rows
+    let column_count = stmt.column_count();
+    let rows = stmt.query_map([], |row: &Row<'_>| {
+        // Convert Row -> Vec<Value> (blob-aware)
+        let values: Vec<Value> = row_to_values(row, column_count);
+
+        // Convert Vec<Value> -> T
+        T::try_from_values(values)
+    })?;
+
+    // 4. Collect results
+    let result: Result<Vec<T>, Error> = rows.collect();
+
+    result
 }
 
 pub fn query_to_tuples<T>(dbfilepath:&Path, sql:&str) -> Result<Vec<T>, rusqlite::Error> 

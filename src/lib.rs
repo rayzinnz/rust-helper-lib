@@ -39,7 +39,7 @@ pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filte
         logger_config = logger_config.add_filter_ignore_str(filter_ignore);
     }
     let logger_config = logger_config.build();
-    let mut loggers: Vec<Box<(dyn SharedLogger + 'static)>> = Vec::new();
+    let mut loggers: Vec<Box<dyn SharedLogger + 'static>> = Vec::new();
     loggers.push(TermLogger::new(level_filter, logger_config, TerminalMode::Mixed, ColorChoice::Auto));
     if let Some(log_to_path) = log_to_path {
         loggers.push(WriteLogger::new(LevelFilter::Error, Config::default(), File::create(log_to_path).unwrap()));

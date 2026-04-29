@@ -2,7 +2,9 @@
 
 use super::*;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use rusqlite::{Connection};
+
 
 // --- Tests for dbfmt_nullable ---
 
@@ -402,6 +404,131 @@ fn test_db_macro_vecs() {
     let t2 = Some(vec![1u8,2,40,100]);
     let t3 = [1u8, 2, 40, 100].as_slice();
     let t4 = Some([1u8,2,40,100].as_slice());
-    let result = db!("{} {} {} {}", t1, t2, t3, t4);
+    let result = db_nocomp!("{} {} {} {}", t1, t2, t3, t4);
     assert_eq!(result, "X'01022864' X'01022864' X'01022864' X'01022864'");
+}
+
+/// Helper: extract raw bytes from SQLite hex blob format: X'ABCD...'
+fn decode_sqlite_blob_hex(s: &str) -> Vec<u8> {
+    assert!(s.starts_with("X'") && s.ends_with("'"));
+
+    let hex = &s[2..s.len() - 1];
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+#[test]
+fn format_blob_without_compression() {
+    let data: Vec<u8> = vec![1, 2, 3, 4, 255, 0];
+
+    let formatted = format_value_inner(&data, "", false);
+
+    let decoded = decode_sqlite_blob_hex(&formatted);
+
+    // No compression → bytes must be identical
+    assert_eq!(decoded, data);
+}
+
+#[test]
+fn format_blob_with_zstd_compression() {
+    let data: Vec<u8> =
+        b"The quick brown fox jumps over the lazy dog".to_vec();
+
+    let formatted = format_value_inner(&data, "", true);
+
+    let decoded = decode_sqlite_blob_hex(&formatted);
+
+    // Must contain zstd magic header
+    assert!(
+        decoded.starts_with(ZSTD_MAGIC),
+        "compressed blob must start with ZSTD magic header"
+    );
+
+    // Decompress and verify original payload
+    let decompressed = maybe_decompress_blob(&decoded);
+
+    assert_eq!(decompressed, data);
+}
+
+#[test]
+fn query_to_tuples_handles_compressed_and_uncompressed_blobs() {
+    // Persist DB to temp file so query_to_tuples can open it
+    let dbfilepath = Path::new("test_blobs.db");
+    let conn = Connection::open(&dbfilepath).unwrap();
+
+    conn.execute(
+        "CREATE TABLE test_blobs (
+            id INTEGER PRIMARY KEY,
+            data BLOB NOT NULL
+        )",
+        [],
+    )
+    .unwrap();
+
+    let raw_blob = b"raw blob data".to_vec();
+    let compressed_blob = b"this blob is compressed".to_vec();
+
+    // Insert uncompressed blob
+    let sql_raw = db_nocomp!("INSERT INTO test_blobs (id, data) VALUES (1, {})",raw_blob);
+    conn.execute(&sql_raw, []).unwrap();
+
+    // Insert compressed blob
+    let sql_compressed = db!("INSERT INTO test_blobs (id, data) VALUES (2, {})",compressed_blob);
+    conn.execute(&sql_compressed, []).unwrap();
+
+    conn.close().unwrap();
+
+    //now select
+    let rows:Vec<(i64, Vec<u8>)> = query_to_tuples_with_decompression(
+        dbfilepath,
+        "SELECT id, data FROM test_blobs ORDER BY id",
+    )
+    .unwrap();
+
+    assert_eq!(
+        rows,
+        vec![
+            (1, raw_blob),
+            (2, compressed_blob),
+        ]
+    );
+
+    std::fs::remove_file(dbfilepath).unwrap();
+}
+
+#[test]
+fn test_try_from_values_tuple() {
+    use rusqlite::types::Value;
+
+    let values = vec![
+        Value::Integer(1),
+        Value::Integer(0),
+    ];
+
+    let result: (Option<i64>, u8) =
+        <(Option<i64>, u8)>::try_from_values(values).unwrap();
+
+    assert_eq!(result, (Some(1), 0));
+}
+
+#[test]
+fn test_query_to_values_then_tuple_nullable() {
+    use std::path::PathBuf;
+
+    let dbfilepath = PathBuf::from("./tests/resources/test.db");
+    let sql = "SELECT c, 0 AS c2 FROM t LIMIT 3;";
+
+    let result =
+        query_to_tuples_with_decompression::<(Option<i64>, u8)>(&dbfilepath, sql)
+            .unwrap();
+
+    let expected = vec![
+        (Some(1), 0),
+        (Some(2), 0),
+        (None, 0),
+    ];
+
+    assert_eq!(result, expected);
 }
