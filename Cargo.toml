@@ -1,27 +1,41 @@
 [package]
 name = "helper_lib"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
+
+[features]
+default = ["log"]
+# default = ["log", "quitter"]
+log = ["dep:log", "dep:simplelog", "dep:time"]
+asyncs = ["dep:tokio"]
+clipboard = ["dep:arboard"]
+datetime = ["dep:chrono"]
+llm = ["dep:anyhow", "dep:base64", "dep:nalgebra", "dep:reqwest", "dep:serde_json"]
+quitter = ["dep:crossterm", "dep:termios"]
+regex = ["dep:regex"]
+sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
+all = ["log", "asyncs", "clipboard", "datetime", "llm", "quitter", "regex", "sql"]
+
 [dependencies]
-anyhow = "1.0.102"
-arboard = "3.6.1"
-base64 = "0.22.1"
-chrono = "0.4.42"
-hex = "0.4.3"
-log = "0.4.28"
-nalgebra = "0.34.2"
-regex = "1.12.3"
-reqwest = "0.13.2"
-rusqlite = { version = "0.39.0", features = ["bundled", "chrono"] }
-serde_json = "1.0.149"
-simplelog = "0.12.2"
-time = "0.3.44"
-tokio = { version = "1.0", features = ["full"] }
-zstd = "0.13.3"
+anyhow = { version = "1", optional = true }
+arboard = { version = "3", optional = true }
+base64 = { version = "0.22", optional = true }
+chrono = { version = "0.4", optional = true }
+hex = { version = "0.4", optional = true }
+log = { version = "0.4", optional = true }
+nalgebra = { version = "0.34", optional = true }
+regex = { version = "1", optional = true }
+reqwest = { version = "0.13", optional = true }
+rusqlite = { version = "0.39", features = ["bundled", "chrono"], optional = true }
+serde_json = { version = "1", optional = true }
+simplelog = { version = "0.12", optional = true }
+time = { version = "0.3", optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
+zstd = { version = "0.13", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-termios = "0.3.3"
+termios = { version = "0.3", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-crossterm = "0.29.0"
+crossterm = { version = "0.29", optional = true }

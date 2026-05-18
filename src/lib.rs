@@ -1,13 +1,21 @@
 #[cfg(target_os = "windows")]
+#[cfg(feature = "quitter")]
 use crossterm::event::{self, Event, KeyCode};
+#[cfg(feature = "log")]
 use log::*;
+#[cfg(feature = "log")]
 use simplelog::*;
 use std::{
-    fs::File, path::Path, sync::{
+    fs::File, path::Path
+};
+#[cfg(feature = "quitter")]
+use std::{
+    sync::{
         Arc, atomic::{AtomicBool, Ordering}
     }
 };
 #[cfg(target_os = "linux")]
+#[cfg(feature = "quitter")]
 use std::{
     io::{self, Read, Write},
     sync::mpsc::{self, Sender},
@@ -15,18 +23,26 @@ use std::{
     time::{Duration},
 };
 #[cfg(target_os = "linux")]
+#[cfg(feature = "quitter")]
 use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
+#[cfg(feature = "asyncs")]
 pub mod asyncs;
+#[cfg(feature = "clipboard")]
 pub mod clipboard;
+#[cfg(feature = "datetime")]
 pub mod datetime;
+#[cfg(feature = "llm")]
 pub mod llm;
 pub mod net;
 pub mod paths;
+#[cfg(feature = "regex")]
 pub mod regex;
+#[cfg(feature = "sql")]
 pub mod sql;
 pub mod strings;
 
+#[cfg(feature = "log")]
 pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filter_allow: &'static str, filter_ignore: &'static str) {
 	let mut logger_config = ConfigBuilder::new();
     let logger_config = logger_config.set_time_offset_to_local().expect("Failed to get local time offset");
@@ -47,6 +63,7 @@ pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filte
     CombinedLogger::init(loggers).unwrap();
 }
 
+#[cfg(feature = "quitter")]
 pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
     #[cfg(target_os = "windows")]
     {
