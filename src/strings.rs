@@ -2,6 +2,32 @@
     s.chars().rev().take(n).collect::<String>().chars().rev().collect()
 }
 
+pub fn vec_u8_as_hex(data: &[u8], is_upper: bool, sep: &str) -> String {
+    if sep.is_empty() && is_upper {
+        data
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect()
+    } else if is_upper {
+        data
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect::<Vec<String>>()
+            .join(sep)
+    } else if sep.is_empty() {
+        data
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    } else {
+        data
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<String>>()
+            .join(sep)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -12,4 +38,21 @@ mod tests {
         assert_eq!(get_last_n_chars(&input, 3), "der");
     }
 
+    #[test]
+    fn test_vec_u8_as_hex_nosep_lower() {
+        let input: Vec<u8> = vec![0xde, 0xad, 0xbe, 0xef];
+        assert_eq!(vec_u8_as_hex(&input, false, ""), "deadbeef");
+    }
+
+    #[test]
+    fn test_vec_u8_as_hex_nosep_upper() {
+        let input: Vec<u8> = vec![0xde, 0xad, 0xbe, 0xef];
+        assert_eq!(vec_u8_as_hex(&input, true, ""), "DEADBEEF");
+    }
+
+    #[test]
+    fn test_vec_u8_as_hex_sep_upper() {
+        let input: Vec<u8> = vec![0xde, 0xad, 0xbe, 0xef];
+        assert_eq!(vec_u8_as_hex(&input, true, "-"), "DE-AD-BE-EF");
+    }
 }
