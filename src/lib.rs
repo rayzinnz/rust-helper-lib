@@ -144,6 +144,7 @@ pub fn watch_for_quit(keep_going: Arc<AtomicBool>) {
     keep_going.store(false, Ordering::Relaxed);
 }
 
+#[cfg(feature = "quitter")]
 #[cfg(target_os = "linux")]
 fn key_press_watcher_linux(tx: Sender<u8>) {
     let stdout = io::stdout();
