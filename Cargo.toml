@@ -24,10 +24,10 @@ base64 = { version = "0.22", optional = true }
 chrono = { version = "0.4", optional = true }
 hex = { version = "0.4", optional = true }
 log = { version = "0.4", optional = true }
-nalgebra = { version = "0.34", optional = true }
+nalgebra = { version = "0.35", optional = true }
 regex = { version = "1", optional = true }
 reqwest = { version = "0.13", optional = true }
-rusqlite = { version = "0.39", features = ["bundled", "chrono"], optional = true }
+rusqlite = { version = "0.40", features = ["bundled", "chrono"], optional = true }
 serde_json = { version = "1", optional = true }
 simplelog = { version = "0.12", optional = true }
 time = { version = "0.3", optional = true }
