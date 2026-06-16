@@ -36,6 +36,8 @@ pub mod datetime;
 pub mod llm;
 pub mod net;
 pub mod paths;
+#[cfg(feature = "markdown")]
+pub mod markdown;
 #[cfg(feature = "regex")]
 pub mod regex;
 #[cfg(feature = "sql")]
