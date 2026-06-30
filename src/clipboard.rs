@@ -5,7 +5,7 @@ use arboard::SetExtLinux;
 #[cfg(target_os = "linux")]
 use std::thread;
 
-pub fn copy_text(text: String) {
+pub fn copy_text(text:&str) {
 	// https://github.com/1Password/arboard/blob/master/README.md
 
 	//linux clipboard manager (X11 and Wayland) does not hold the clipboard contents, this stays with the initiating app, so hold a thread open with the Clipboard object.
@@ -24,7 +24,7 @@ pub fn copy_text(text: String) {
 }
 
 #[cfg(target_os = "linux")]
-fn threaded_copy_text(text: String) {
+fn threaded_copy_text(text:&str) {
 	//this thread keeps the clipboard source active until the clipboard is used again.
 	//It will auto-exit once ctx.set.wait ends.
 	if let Ok(mut ctx) = Clipboard::new() {
