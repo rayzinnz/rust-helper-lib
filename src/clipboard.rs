@@ -11,7 +11,8 @@ pub fn copy_text(text:&str) {
 	//linux clipboard manager (X11 and Wayland) does not hold the clipboard contents, this stays with the initiating app, so hold a thread open with the Clipboard object.
 	#[cfg(target_os = "linux")]
 	{
-		thread::spawn(move || {threaded_copy_text(text);});
+		let text2 = text.to_string();
+		thread::spawn(move || {threaded_copy_text(text2.as_str());});
 	}
 
 	//windows and macos clipboard  manager hold the clipboard contents, so once copied to the clipboard, it stays there.  No need to keep the apps Clipboard alive.
