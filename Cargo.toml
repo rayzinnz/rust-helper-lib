@@ -41,3 +41,6 @@ termios = { version = "0.3", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 crossterm = { version = "0.29", optional = true }
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }

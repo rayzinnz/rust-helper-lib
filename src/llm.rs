@@ -1,4 +1,4 @@
-﻿use std::{fs, path::Path};
+﻿use std::{env, fs, path::Path};
 
 use anyhow::{Result, bail};
 use base64::prelude::*;
@@ -14,8 +14,8 @@ pub struct LLMHost {
 #[derive(Clone, Debug)]
 pub struct LLMCloudflare {
 	pub url: String,
-	pub access_client_id: String,
-	pub access_client_secret: String,
+	pub access_client_id: Option<String>,
+	pub access_client_secret: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -57,10 +57,22 @@ async fn llm_call(endpoint:LLMEndpoint, url_path:&str, payload:String) -> Result
 			if !url.to_lowercase().starts_with("http") {
 				url.insert_str(0, "https://");
 			}
+			let access_client_id = match cf.access_client_id {
+				Some(val) => val,
+				None => {
+					env::var("CF_ACCESS_CLIENT_ID").expect("could not get env var CF_ACCESS_CLIENT_ID")
+				}
+			};
+			let access_client_secret = match cf.access_client_secret {
+				Some(val) => val,
+				None => {
+					env::var("CF_ACCESS_CLIENT_SECRET").expect("could not get env var CF_ACCESS_CLIENT_SECRET")
+				}
+			};
 			url.push_str(url_path);
 			resp = client.post(url)
-				.header("CF-Access-Client-Id", cf.access_client_id)
-				.header("CF-Access-Client-Secret", cf.access_client_secret)
+				.header("CF-Access-Client-Id", access_client_id)
+				.header("CF-Access-Client-Secret", access_client_secret)
 				.body(payload)
 				.send()
 				.await?;

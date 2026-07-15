@@ -32,3 +32,20 @@ fn threaded_copy_text(text:&str) {
 		_ = ctx.set().wait().text(text);
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use uuid::Uuid;
+
+	#[test]
+    fn test_copy_text() {
+		let expected = Uuid::new_v4().to_string();
+		copy_text(&expected);
+		let mut result = String::new();
+		if let Ok(mut ctx) = Clipboard::new() {
+			result = ctx.get_text().unwrap();
+		}
+        assert_eq!(expected, result);
+    }
+}
