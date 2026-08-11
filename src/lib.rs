@@ -51,10 +51,16 @@ pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filte
     let mut logger_config = logger_config.set_time_format_custom(format_description!("[hour]:[minute]:[second].[subsecond digits:3]"));
     logger_config = logger_config.set_time_offset_to_local().expect("Failed to get local time offset");
 	if !filter_allow.is_empty() {
-        logger_config = logger_config.add_filter_allow_str(filter_allow);
+        let filter_allows:Vec<&'static str> = filter_allow.split(',').collect();
+        for filter_allow in filter_allows {
+            logger_config = logger_config.add_filter_allow_str(filter_allow);
+        }
     }
 	if !filter_ignore.is_empty() {
-        logger_config = logger_config.add_filter_ignore_str(filter_ignore);
+        let filter_ignores:Vec<&'static str> = filter_ignore.split(',').collect();
+        for filter_ignore in filter_ignores {
+            logger_config = logger_config.add_filter_ignore_str(filter_ignore);
+        }
     }
     let logger_config = logger_config.build();
     let mut loggers: Vec<Box<dyn SharedLogger + 'static>> = Vec::new();
