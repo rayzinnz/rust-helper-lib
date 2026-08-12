@@ -13,10 +13,11 @@ clipboard = ["dep:arboard"]
 datetime = ["dep:chrono"]
 llm = ["dep:anyhow", "dep:base64", "dep:nalgebra", "dep:reqwest", "dep:serde_json"]
 markdown = ["dep:anyhow", "dep:html-to-markdown-rs"]
+paths = []
 quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
 sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
-all = ["log", "asyncs", "clipboard", "datetime", "llm", "markdown", "quitter", "regex", "sql"]
+all = ["log", "asyncs", "clipboard", "datetime", "llm", "markdown", "paths", "quitter", "regex", "sql"]
 
 [dependencies]
 anyhow = { version = "1", optional = true }
