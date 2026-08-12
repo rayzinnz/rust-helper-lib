@@ -1,4 +1,5 @@
-﻿use std::{ffi::OsStr, path::{Component, Path, PathBuf}};
+﻿use std::{ffi::OsStr, fs::OpenOptions, io::{self, Write}, path::{Component, Path, PathBuf}};
+
 
 pub fn format_bytes(bytes:u64) -> String {
 	if bytes < 1_024 {
@@ -77,6 +78,20 @@ pub fn add_extension(path:&Path, extension:&str) -> PathBuf {
 	}
 	
 	out_pathbuf
+}
+
+pub fn append_bytes_to_file(file_path: &str, data: &[u8]) -> io::Result<()> {
+    // 1. Open the file in append mode (creates it if it doesn't exist)
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .write(true) 
+        .open(file_path)?;
+
+    // 2. Write the entire u8 slice to the end of the file
+    file.write_all(data)?;
+
+    Ok(())
 }
 
 #[cfg(test)]
