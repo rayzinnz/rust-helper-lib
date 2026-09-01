@@ -1,4 +1,86 @@
-﻿pub fn get_last_n_chars(s: &str, n: usize) -> String {
+﻿/// Concatenates &str values into a new `String`.
+///
+/// # Examples
+///
+/// ```
+/// use helper_lib::concat_str;
+/// let name = "World";
+/// let s = concat_str!("Hello, ", name, "!");
+/// assert_eq!(s, "Hello, World!");
+/// ```
+#[macro_export]
+macro_rules! concat_str {
+    ($($s:expr),+ $(,)?) => {{
+        let capacity = 0 $(+ $s.len())*;
+        let mut result = String::with_capacity(capacity);
+        $(
+            result.push_str($s);
+        )*
+        result
+    }};
+}
+
+/// Concatenates any number of string-like (&str, String, &String, Cow<'_, str>) values into a new `String`.
+///
+/// # Examples
+///
+/// ```
+/// use helper_lib::concat_strref;
+/// let name = String::from("World");
+/// let s = concat_strref!("Hello, ", &name, "!");
+/// assert_eq!(s, "Hello, World!");
+/// ```
+#[macro_export]
+macro_rules! concat_strref {
+    // concat 
+    ($($s:expr),+ $(,)?) => {{
+        let capacity = 0 $(
+            + ::std::convert::AsRef::<str>::as_ref(&$s).len()
+        )*;
+
+        let mut result = String::with_capacity(capacity);
+
+        $(
+            result.push_str(::std::convert::AsRef::<str>::as_ref(&$s));
+        )*
+
+        result
+    }};
+}
+
+/// Concatenates any number of anything implementing std::fmt::Display, including &str, String, 
+/// integers, floats, booleans, and many custom types values into a new `String`.
+///
+/// # Examples
+///
+/// ```
+/// use helper_lib::concat_any;
+/// let s = concat_any!(
+///     "count=",
+///     42,
+///     ", ok=",
+///     true,
+///     ", msg=",
+///     String::from("hello")
+/// );
+/// 
+/// assert_eq!(s, "count=42, ok=true, msg=hello");
+/// ```
+#[macro_export]
+macro_rules! concat_any {
+    // concat anything that implements Display to a String
+    ($($x:expr),+ $(,)?) => {{
+        use std::fmt::Write;
+
+        let mut result = String::new();
+        $(
+            write!(&mut result, "{}", $x).unwrap();
+        )*
+        result
+    }};
+}
+
+pub fn get_last_n_chars(s: &str, n: usize) -> String {
     s.chars().rev().take(n).collect::<String>().chars().rev().collect()
 }
 
@@ -40,6 +122,34 @@ pub fn string_from_utf16_as_vec_u8(utf16_data:&[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_macro_concat_str() {
+        let name = "World";
+        let s = concat_str!("Hello, ", name, "!");
+        assert_eq!(s, "Hello, World!");
+    }
+
+    #[test]
+    fn test_macro_concat_strref() {
+        let name = String::from("World");
+        let s = concat_strref!("Hello, ", name, "!");
+        assert_eq!(s, "Hello, World!");
+    }
+
+    #[test]
+    fn test_macro_concat_any() {
+        let s = concat_any!(
+            "count=",
+            42,
+            ", ok=",
+            true,
+            ", msg=",
+            String::from("hello")
+        );
+
+        assert_eq!(s, "count=42, ok=true, msg=hello");
+    }
 
     #[test]
     fn test_get_last_n_chars() {
