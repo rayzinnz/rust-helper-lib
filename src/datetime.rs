@@ -41,6 +41,10 @@ pub fn systemtime_to_utc(systemtime: SystemTime) -> DateTime<Utc> {
 	systemtime.into()
 }
 
+pub fn utc_to_systemtime(utc: DateTime<Utc>) -> SystemTime {
+	utc.into()
+}
+
 pub fn systemtime_to_unixtimestamp(systemtime: SystemTime) -> u64 {
 	// unix timestamp in seconds
 	// errors defaults to 0
@@ -167,5 +171,20 @@ mod tests {
 		let result = windows_filetime_unixtimestamp(windows_filetime);
 		let expected = Utc.with_ymd_and_hms(2026, 3, 4, 22, 39, 13).unwrap();
 		assert_eq!(result, expected.timestamp());
+    }
+
+	#[test]
+    fn test_systemtime_to_utc() {
+		let result = systemtime_to_utc(SystemTime::UNIX_EPOCH);
+		let expected = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
+		assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn test_utc_to_systemtime() {
+		let epoch = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
+		let result = utc_to_systemtime(epoch);
+		let expected = SystemTime::UNIX_EPOCH;
+		assert_eq!(result, expected);
     }
 }
