@@ -732,7 +732,7 @@ where
     Ok(v2)
 }
 
-pub fn query_to_tuples_conn<T>(conn:Connection, sql:&str) -> Result<Vec<T>, rusqlite::Error> 
+pub fn query_to_tuples_conn<T>(conn:&Connection, sql:&str) -> Result<Vec<T>, rusqlite::Error> 
 where
     // T must implement TryFrom<&Row> for *any* lifetime 'r (HRTB remains crucial)
     for<'r> T: TryFrom<
