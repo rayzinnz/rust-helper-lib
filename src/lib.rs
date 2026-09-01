@@ -35,6 +35,7 @@ pub mod datetime;
 #[cfg(feature = "llm")]
 pub mod llm;
 pub mod net;
+#[cfg(feature = "paths")]
 pub mod paths;
 #[cfg(feature = "markdown")]
 pub mod markdown;

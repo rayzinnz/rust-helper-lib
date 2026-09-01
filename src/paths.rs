@@ -1,5 +1,4 @@
-﻿use std::{ffi::OsStr, fs::OpenOptions, io::{self, Write}, path::{Component, Path, PathBuf}};
-
+﻿use std::{ffi::OsStr, fs::{FileTimes, OpenOptions}, io::{self, Write}, path::{Component, Path, PathBuf}, time::SystemTime};
 
 pub fn format_bytes(bytes:u64) -> String {
 	if bytes < 1_024 {
@@ -92,6 +91,14 @@ pub fn append_bytes_to_file(file_path: &str, data: &[u8]) -> io::Result<()> {
     file.write_all(data)?;
 
     Ok(())
+}
+
+pub fn set_mtime(path:&Path, mtime: SystemTime) -> io::Result<()> {
+	let file = OpenOptions::new().write(true).open(path)?;
+	let times = FileTimes::new()
+		.set_modified(mtime);
+	file.set_times(times)?;
+	Ok(())
 }
 
 #[cfg(test)]
