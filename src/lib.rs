@@ -30,6 +30,8 @@ use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 pub mod asyncs;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
+#[cfg(feature = "crypto")]
+pub mod crypto;
 #[cfg(feature = "datetime")]
 pub mod datetime;
 #[cfg(feature = "llm")]

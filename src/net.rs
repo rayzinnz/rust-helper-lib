@@ -28,6 +28,7 @@ mod tests {
     #[test]
     fn test_can_connect_true_linux() {
 		// 22: SSH
+        // sudo systemctl enable --now sshd
         assert_eq!(can_connect("127.0.0.1", 22, 100), true);
     }
 

@@ -10,6 +10,7 @@ default = ["log"]
 log = ["dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]
+crypto = ["dep:aes-gcm"]
 datetime = ["dep:chrono"]
 llm = ["dep:anyhow", "dep:base64", "dep:nalgebra", "dep:reqwest", "dep:serde_json"]
 markdown = ["dep:anyhow", "dep:html-to-markdown-rs"]
@@ -17,9 +18,10 @@ paths = []
 quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
 sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
-all = ["log", "asyncs", "clipboard", "datetime", "llm", "markdown", "paths", "quitter", "regex", "sql"]
+all = ["log", "asyncs", "clipboard", "crypto", "datetime", "llm", "markdown", "paths", "quitter", "regex", "sql"]
 
 [dependencies]
+aes-gcm = { version = "0.11", optional = true }
 anyhow = { version = "1", optional = true }
 arboard = { version = "3", optional = true }
 base64 = { version = "0.22", optional = true }
