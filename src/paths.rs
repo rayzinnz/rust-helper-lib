@@ -1,4 +1,6 @@
-﻿use std::{ffi::OsStr, fs::{FileTimes, OpenOptions}, io::{self, Write}, path::{Component, Path, PathBuf}, time::SystemTime};
+﻿use std::{ffi::OsStr, fs::{File, FileTimes, OpenOptions}, io::{self, BufReader, Read, Write}, path::{Component, Path, PathBuf}, time::SystemTime};
+
+use sha2::{Digest, Sha256};
 
 pub fn format_bytes(bytes:u64) -> String {
 	if bytes < 1_024 {
@@ -44,7 +46,6 @@ pub fn path_to_agnostic_relative(path: &Path, base: &Path) -> String {
 
 	}
 
-	
 	return rtn;
 }
 
@@ -100,6 +101,28 @@ pub fn set_mtime(path:&Path, mtime: SystemTime) -> io::Result<()> {
 	file.set_times(times)?;
 	Ok(())
 }
+
+pub fn hash_file(path:&Path) -> io::Result<String> {
+	let file = File::open(path)?;
+	let mut reader = BufReader::new(file);
+	let mut hasher = Sha256::new();
+	let mut buffer = [0u8; 8192];
+	loop {
+		let bytes_read = reader.read(&mut buffer)?;
+		if bytes_read == 0 {
+			break;
+		}
+		hasher.update(&buffer[..bytes_read]);
+	}
+
+	let result = hasher.finalize()
+		.as_slice()
+		.iter()
+		.map(|b| format!("{b:02x}"))
+		.collect();
+	Ok(result)
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -172,4 +195,12 @@ mod tests {
 		let result = result.as_os_str();
         assert_eq!(result, expected);
     }
+
+	#[test]
+	fn test_hash_file() {
+		//sha256sum ./tests/resources/test_hash.bin
+		let expected = "04548c4d089353745b20bd5d2b43839e3e08f7dab47c5bf62c845c74aa5281eb".to_string();
+		let result = hash_file(Path::new("./tests/resources/test_hash.bin")).unwrap();
+        assert_eq!(result, expected);
+	}
 }

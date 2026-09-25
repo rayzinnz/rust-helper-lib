@@ -3,6 +3,8 @@ name = "helper_lib"
 version = "0.2.2"
 edition = "2024"
 
+[lib]
+doctest = false
 
 [features]
 default = ["log"]
@@ -14,7 +16,7 @@ crypto = ["dep:aes-gcm"]
 datetime = ["dep:chrono"]
 llm = ["dep:anyhow", "dep:base64", "dep:nalgebra", "dep:reqwest", "dep:serde_json"]
 markdown = ["dep:anyhow", "dep:html-to-markdown-rs"]
-paths = []
+paths = ["dep:sha2"]
 quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
 sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
@@ -24,7 +26,7 @@ all = ["log", "asyncs", "clipboard", "crypto", "datetime", "llm", "markdown", "p
 aes-gcm = { version = "0.11", optional = true }
 anyhow = { version = "1", optional = true }
 arboard = { version = "3", optional = true }
-base64 = { version = "0.22", optional = true }
+base64 = { version = "0.23", optional = true }
 chrono = { version = "0.4", optional = true }
 hex = { version = "0.4", optional = true }
 html-to-markdown-rs = { version = "3", optional = true }
@@ -34,10 +36,11 @@ regex = { version = "1", optional = true }
 reqwest = { version = "0.13", optional = true }
 rusqlite = { version = "0.40", features = ["bundled", "chrono"], optional = true }
 serde_json = { version = "1", optional = true }
+sha2 = { version = "0.11", optional = true }
 simplelog = { version = "0.12", optional = true }
 time = { version = "0.3", optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
-zstd = { version = "0.13", optional = true }
+zstd = { version = "0.14", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 termios = { version = "0.3", optional = true }
