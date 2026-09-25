@@ -16,7 +16,7 @@ crypto = ["dep:aes-gcm"]
 datetime = ["dep:chrono"]
 llm = ["dep:anyhow", "dep:base64", "dep:nalgebra", "dep:reqwest", "dep:serde_json"]
 markdown = ["dep:anyhow", "dep:html-to-markdown-rs"]
-paths = ["dep:sha2"]
+paths = ["dep:sha2", "dep:flate2"]
 quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
 sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
@@ -28,6 +28,7 @@ anyhow = { version = "1", optional = true }
 arboard = { version = "3", optional = true }
 base64 = { version = "0.23", optional = true }
 chrono = { version = "0.4", optional = true }
+flate2 = { version = "1", optional = true }
 hex = { version = "0.4", optional = true }
 html-to-markdown-rs = { version = "3", optional = true }
 log = { version = "0.4", optional = true }

@@ -808,6 +808,7 @@ dependencies = [
  "base64",
  "chrono",
  "crossterm",
+ "flate2",
  "hex",
  "html-to-markdown-rs",
  "log",
