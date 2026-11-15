@@ -8,7 +8,7 @@ doctest = false
 
 [features]
 default = ["log"]
-# default = ["log", "quitter"]
+# default = ["log", "datetime"]
 log = ["dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]

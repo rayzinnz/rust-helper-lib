@@ -79,6 +79,23 @@ pub fn windows_filetime_unixtimestamp(windows_filetime:u64) -> i64 {
 	seconds_since_unix_epoch as i64
 }
 
+/// formats current time in UTC to filename safe text yyyymmdd_hhMMss
+pub fn utc_to_filename(dt: DateTime<Utc>) -> String {
+	dt.format("%Y%m%d_%H%M%S").to_string()
+}
+
+pub fn local_to_filename(dt: DateTime<Local>) -> String {
+	dt.format("%Y%m%d_%H%M%S").to_string()
+}
+
+pub fn local_timestamp_filename() -> String {
+	Local::now().format("%Y%m%d_%H%M%S").to_string()
+}
+
+pub fn utc_timestamp_filename() -> String {
+	Utc::now().format("%Y%m%d_%H%M%S").to_string()
+}
+
 #[cfg(test)]
 mod tests {
     //https://docs.rs/chrono/latest/chrono/format/strftime/index.html
@@ -185,6 +202,22 @@ mod tests {
 		let epoch = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap();
 		let result = utc_to_systemtime(epoch);
 		let expected = SystemTime::UNIX_EPOCH;
+		assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn test_utc_to_filename() {
+		let epoch = Utc.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
+		let result = utc_to_filename(epoch);
+		let expected = String::from("20251115_031559");
+		assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn test_local_to_filename() {
+		let epoch = Local.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
+		let result = local_to_filename(epoch);
+		let expected = String::from("20251115_031559");
 		assert_eq!(result, expected);
     }
 }
