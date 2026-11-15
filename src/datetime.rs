@@ -79,9 +79,14 @@ pub fn windows_filetime_unixtimestamp(windows_filetime:u64) -> i64 {
 	seconds_since_unix_epoch as i64
 }
 
-/// formats current time in UTC to filename safe text yyyymmdd_hhMMss
+/// formats a datetime in UTC to filename safe text yyyymmdd_hhmmss
 pub fn utc_to_filename(dt: DateTime<Utc>) -> String {
 	dt.format("%Y%m%d_%H%M%S").to_string()
+}
+
+/// formats a datetime in UTC to filename safe text yyyymmdd_hhmmss_ffffff
+pub fn utc_to_filename_us(dt: DateTime<Utc>) -> String {
+	dt.format("%Y%m%d_%H%M%S_%6f").to_string()
 }
 
 pub fn local_to_filename(dt: DateTime<Local>) -> String {
@@ -94,6 +99,10 @@ pub fn local_timestamp_filename() -> String {
 
 pub fn utc_timestamp_filename() -> String {
 	Utc::now().format("%Y%m%d_%H%M%S").to_string()
+}
+
+pub fn local_timestamp_filename_us() -> String {
+	Local::now().format("%Y%m%d_%H%M%S_%6f").to_string()
 }
 
 #[cfg(test)]
@@ -207,16 +216,24 @@ mod tests {
 
 	#[test]
     fn test_utc_to_filename() {
-		let epoch = Utc.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
-		let result = utc_to_filename(epoch);
+		let dt = Utc.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
+		let result = utc_to_filename(dt);
 		let expected = String::from("20251115_031559");
 		assert_eq!(result, expected);
     }
 
 	#[test]
+    fn test_utc_to_filename_us() {
+		let dt = Utc::now();
+		let result = utc_to_filename_us(dt);
+		let expected = dt.format("%Y%m%d_%H%M%S_%6f").to_string();
+		assert_eq!(result, expected);
+    }
+
+	#[test]
     fn test_local_to_filename() {
-		let epoch = Local.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
-		let result = local_to_filename(epoch);
+		let dt = Local.with_ymd_and_hms(2025, 11, 15, 3, 15, 59).unwrap();
+		let result = local_to_filename(dt);
 		let expected = String::from("20251115_031559");
 		assert_eq!(result, expected);
     }
