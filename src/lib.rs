@@ -6,7 +6,7 @@ use log::*;
 #[cfg(feature = "log")]
 use simplelog::*;
 use std::{
-    fs::File, path::Path
+    fs::{self, File}, path::{Path, PathBuf}
 };
 #[cfg(feature = "quitter")]
 use std::{
@@ -30,6 +30,8 @@ use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 pub mod asyncs;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
+#[cfg(feature = "config")]
+pub mod config;
 #[cfg(feature = "crypto")]
 pub mod crypto;
 #[cfg(feature = "datetime")]
@@ -48,7 +50,20 @@ pub mod sql;
 pub mod strings;
 
 #[cfg(feature = "log")]
-pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filter_allow: &'static str, filter_ignore: &'static str) {
+pub fn get_app_log_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let app_name = env!("CARGO_PKG_NAME");
+    match dirs::config_dir() {
+        Some(config_dir) => {
+		    let app_config_path = config_dir.join(app_name);
+            fs::create_dir_all(&app_config_path)?;
+            Ok(app_config_path.join(format!("{}.log", app_name)))
+        },
+        None => Err("Could not resolve config dir".into())
+    }
+}
+
+#[cfg(feature = "log")]
+pub fn setup_logger(level_filter: LevelFilter, log_to_term: bool, log_to_path: Option<&Path>, filter_allow: &'static str, filter_ignore: &'static str) {
 	let mut logger_config = ConfigBuilder::new();
     let logger_config = logger_config.set_time_offset_to_local().expect("Failed to get local time offset");
     let mut logger_config = logger_config.set_time_format_custom(format_description!("[hour]:[minute]:[second].[subsecond digits:3]"));
@@ -67,9 +82,11 @@ pub fn setup_logger(level_filter: LevelFilter, log_to_path: Option<&Path>, filte
     }
     let logger_config = logger_config.build();
     let mut loggers: Vec<Box<dyn SharedLogger + 'static>> = Vec::new();
-    loggers.push(TermLogger::new(level_filter, logger_config, TerminalMode::Mixed, ColorChoice::Auto));
+    if log_to_term {
+        loggers.push(TermLogger::new(level_filter, logger_config.clone(), TerminalMode::Mixed, ColorChoice::Auto));
+    }
     if let Some(log_to_path) = log_to_path {
-        loggers.push(WriteLogger::new(LevelFilter::Error, Config::default(), File::create(log_to_path).unwrap()));
+        loggers.push(WriteLogger::new(level_filter, logger_config.clone(), File::create(log_to_path).unwrap()));
     }
     CombinedLogger::init(loggers).unwrap();
 }

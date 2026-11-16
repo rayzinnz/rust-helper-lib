@@ -1,7 +1,19 @@
-﻿use std::{ffi::OsStr, fs::{File, FileTimes, OpenOptions}, io::{self, BufReader, BufWriter, Read, Write}, path::{Component, Path, PathBuf}, time::SystemTime};
+﻿use std::{ffi::OsStr, fs::{self, File, FileTimes, OpenOptions}, io::{self, BufReader, BufWriter, Read, Write}, path::{Component, Path, PathBuf}, time::SystemTime};
 
 use sha2::{Digest, Sha256};
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
+
+pub fn get_app_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+	let app_name = env!("CARGO_PKG_NAME");
+    match dirs::config_dir() {
+        Some(config_dir) => {
+		    let app_config_path = config_dir.join(app_name);
+            fs::create_dir_all(&app_config_path)?;
+            Ok(app_config_path.join("config.toml"))
+        },
+        None => Err("Could not resolve config dir".into())
+    }
+}
 
 pub fn format_bytes(bytes:u64) -> String {
 	if bytes < 1_024 {
