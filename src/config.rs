@@ -7,8 +7,8 @@
 /// app_name! is a macro to get the app_name of the calling application
 pub fn get_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 	//1. First check ../dev folder, in case this is in a development environment
-	//   Start from subfolder under target
-	let dev_config_path = PathBuf::from("../../dev/config.toml");
+	//   Assume running `cargo run` from root folder.
+	let dev_config_path = PathBuf::from("./dev/config.toml");
 	if dev_config_path.exists() {
 		return Ok(dev_config_path);
 	}
