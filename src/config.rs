@@ -6,7 +6,14 @@
 /// ```
 /// app_name! is a macro to get the app_name of the calling application
 pub fn get_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-	//same folder as exe takes precedence, if exists
+	//1. First check ../dev folder, in case this is in a development environment
+	//   Start from subfolder under target
+	let dev_config_path = PathBuf::from("../../dev/config.toml");
+	if dev_config_path.exists() {
+		return Ok(dev_config_path);
+	}
+	
+	//2. same folder as exe takes precedence, if exists
 	let mut exe_path = std::env::current_exe()?;
 	exe_path.pop(); //remove .exe file
 	exe_path.push("config.toml");
@@ -14,7 +21,7 @@ pub fn get_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Er
 		return Ok(exe_path);
 	}
 
-	//config dir is otherwise the default
+	//3. config dir is otherwise the default
     match dirs::config_dir() {
         Some(config_dir) => {
 		    let app_config_path = config_dir.join(app_name);

@@ -3,8 +3,7 @@
 use sha2::{Digest, Sha256};
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 
-pub fn get_app_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-	let app_name = env!("CARGO_PKG_NAME");
+pub fn get_app_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     match dirs::config_dir() {
         Some(config_dir) => {
 		    let app_config_path = config_dir.join(app_name);
