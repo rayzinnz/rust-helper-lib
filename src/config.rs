@@ -27,6 +27,27 @@ pub fn get_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Er
 
 ///loads the standard config.toml path into a struct.
 /// ```rust
+/// use helper_lib::{app_name, config::load_config_toml};
+/// use serde::Deserialize;
+/// 
+/// #[derive(Debug, Deserialize)]
+/// pub struct Config {
+/// 	pub image_save_root: String,
+/// 	pub db_path: String,
+/// }
+/// 
+/// impl Default for Config {
+///     fn default() -> Self {
+///         Self { 
+/// 			image_save_root: "~".to_string(),
+/// 			db_path: "~/detection_events.db".to_string(),
+/// 		}
+///     }
+/// }
+/// 
+/// pub fn load_config() -> Config {
+/// 	load_config_toml(app_name!()).unwrap_or_default()
+/// }
 /// ```
 pub fn load_config_toml<T>(app_name: &str) -> Result<T, Box<dyn std::error::Error>>
 where
