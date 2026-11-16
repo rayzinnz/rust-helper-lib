@@ -1,6 +1,11 @@
 ﻿use std::{fs, path::PathBuf};
 
-pub fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+/// gets a full path to the config.toml. e.g.
+/// ```rust
+/// let config_path = get_config_path(app_name!());
+/// ```
+/// app_name! is a macro to get the app_name of the calling application
+pub fn get_config_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 	//same folder as exe takes precedence, if exists
 	let mut exe_path = std::env::current_exe()?;
 	exe_path.pop(); //remove .exe file
@@ -9,7 +14,6 @@ pub fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 		return Ok(exe_path);
 	}
 
-	let app_name = env!("CARGO_PKG_NAME");
 	//config dir is otherwise the default
     match dirs::config_dir() {
         Some(config_dir) => {
@@ -21,11 +25,14 @@ pub fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     }
 }
 
-pub fn load_config_toml<T>() -> Result<T, Box<dyn std::error::Error>>
+///loads the standard config.toml path into a struct.
+/// ```rust
+/// ```
+pub fn load_config_toml<T>(app_name: &str) -> Result<T, Box<dyn std::error::Error>>
 where
     T: serde_core::de::DeserializeOwned,
 {
-	let config_file_path = get_config_path()?;
+	let config_file_path = get_config_path(app_name)?;
 	let toml_content: String = fs::read_to_string(config_file_path)?;
     Ok(toml::from_str(&toml_content)?)
 }
