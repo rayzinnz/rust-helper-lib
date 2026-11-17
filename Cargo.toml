@@ -8,7 +8,7 @@ doctest = false
 
 [features]
 # default = ["log"]
-default = ["log", "config"]
+default = ["log", "rusqlite", "sql", "turso"]
 log = ["dep:dirs", "dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]
@@ -20,8 +20,10 @@ markdown = ["dep:anyhow", "dep:html-to-markdown-rs"]
 paths = ["dep:dirs", "dep:sha2", "dep:flate2"]
 quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
-sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:rusqlite", "dep:zstd"]
-all = ["log", "asyncs", "clipboard", "config", "crypto", "datetime", "llm", "markdown", "paths", "quitter", "regex", "sql"]
+rusqlite = ["sql", "dep:anyhow", "dep:rusqlite"]
+sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:zstd"]
+turso = ["sql", "dep:anyhow", "dep:turso"]
+all = ["log", "asyncs", "clipboard", "config", "crypto", "datetime", "llm", "markdown", "paths", "quitter", "regex", "rusqlite", "sql", "turso"]
 
 [dependencies]
 aes-gcm = { version = "0.11", optional = true }
@@ -45,6 +47,7 @@ simplelog = { version = "0.12", optional = true }
 time = { version = "0.3", optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
 toml = { version = "1", optional = true }
+turso = { version = "0.8", optional = true }
 zstd = { version = "0.14", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -45,9 +45,13 @@ pub mod paths;
 pub mod markdown;
 #[cfg(feature = "regex")]
 pub mod regex;
+#[cfg(feature = "rusqlite")]
+pub mod rusqlite;
 #[cfg(feature = "sql")]
 pub mod sql;
 pub mod strings;
+#[cfg(feature = "turso")]
+pub mod turso;
 
 #[macro_export]
 macro_rules! app_name {
