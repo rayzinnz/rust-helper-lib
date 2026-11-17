@@ -7,8 +7,8 @@ edition = "2024"
 doctest = false
 
 [features]
-# default = ["log"]
-default = ["log", "rusqlite", "sql", "turso"]
+default = ["log"]
+# default = ["log", "rusqlite", "sql", "turso"]
 log = ["dep:dirs", "dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]
