@@ -8,7 +8,7 @@ doctest = false
 
 [features]
 default = ["log"]
-# default = ["log", "rusqlite", "sql", "turso"]
+# default = ["log", "turso"]
 log = ["dep:dirs", "dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]
@@ -22,7 +22,7 @@ quitter = ["dep:crossterm", "dep:termios"]
 regex = ["dep:regex"]
 rusqlite = ["sql", "dep:anyhow", "dep:rusqlite"]
 sql = ["dep:anyhow", "dep:chrono", "dep:hex", "dep:zstd"]
-turso = ["sql", "dep:anyhow", "dep:turso"]
+turso = ["sql", "dep:turso", "dep:tokio"]
 all = ["log", "asyncs", "clipboard", "config", "crypto", "datetime", "llm", "markdown", "paths", "quitter", "regex", "rusqlite", "sql", "turso"]
 
 [dependencies]

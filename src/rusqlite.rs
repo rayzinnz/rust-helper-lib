@@ -667,8 +667,11 @@ mod tests {
 	#[test]
 	fn query_to_tuples_handles_compressed_and_uncompressed_blobs() {
 		// Persist DB to temp file so query_to_tuples can open it
-		let dbfilepath = Path::new("test_blobs.db");
-		let conn = Connection::open(dbfilepath).unwrap();
+		let dbfilepath = std::env::temp_dir().join("test_blobs.db");
+		if dbfilepath.exists() {
+			fs::remove_file(&dbfilepath).unwrap();
+		}
+		let conn = Connection::open(&dbfilepath).unwrap();
 
 		conn.execute(
 			"CREATE TABLE test_blobs (
@@ -694,7 +697,7 @@ mod tests {
 
 		//now select
 		let rows:Vec<(i64, Vec<u8>)> = query_to_tuples_with_decompression(
-			dbfilepath,
+			&dbfilepath,
 			"SELECT id, data FROM test_blobs ORDER BY id",
 		)
 		.unwrap();
@@ -707,7 +710,9 @@ mod tests {
 			]
 		);
 
-		std::fs::remove_file(dbfilepath).unwrap();
+		if dbfilepath.exists() {
+			fs::remove_file(&dbfilepath).unwrap();
+		}
 	}
 
 	#[test]
