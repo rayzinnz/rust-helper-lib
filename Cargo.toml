@@ -9,7 +9,7 @@ doctest = false
 [features]
 default = ["log"]
 # default = ["log", "turso"]
-log = ["dep:dirs", "dep:log", "dep:simplelog", "dep:time"]
+log = ["dep:anyhow", "dep:dirs", "dep:log", "dep:simplelog", "dep:time"]
 asyncs = ["dep:tokio"]
 clipboard = ["dep:arboard"]
 config = ["dep:dirs", "dep:serde_core", "dep:toml"]

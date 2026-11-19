@@ -1,3 +1,5 @@
+#[cfg(feature = "log")]
+use anyhow::{Result, bail};
 #[cfg(target_os = "windows")]
 #[cfg(feature = "quitter")]
 use crossterm::event::{self, Event, KeyCode};
@@ -61,14 +63,14 @@ macro_rules! app_name {
 }
 
 #[cfg(feature = "log")]
-pub fn get_app_log_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+pub fn get_app_log_path(app_name: &str) -> Result<PathBuf> {
     match dirs::config_dir() {
         Some(config_dir) => {
 		    let app_config_path = config_dir.join(app_name);
             fs::create_dir_all(&app_config_path)?;
             Ok(app_config_path.join(format!("{}.log", app_name)))
         },
-        None => Err("Could not resolve config dir".into())
+        None => bail!("Could not resolve config dir")
     }
 }
 
