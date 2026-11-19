@@ -61,7 +61,7 @@ macro_rules! app_name {
 }
 
 #[cfg(feature = "log")]
-pub fn get_app_log_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn get_app_log_path(app_name: &str) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
     match dirs::config_dir() {
         Some(config_dir) => {
 		    let app_config_path = config_dir.join(app_name);
